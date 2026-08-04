@@ -533,51 +533,16 @@ function FanficMenu:onSelectUserSearch()
             table.insert(menu_items, {
                 text = displayText,
                 callback = function()
-                    local dialog = nil
-                    dialog = ButtonDialog:new({
-                        title = displayText,
-                        buttons = {
-                            {
-                                {
-                                    text = _("View user profile"),
-                                    callback = function()
-                                        local username, pseud
-                                        if string.find(user, "%(") and string.find(user, "%)") then
-                                            username = string.match(user, "%((.-)%)")
-                                            pseud = string.match(user, "^(.-)%s*%(")
-                                        else
-                                            username = user
-                                            pseud = user
-                                        end
-                                        self.fanfic:showUserInfo(username, pseud, self.menuWidget)
-                                        UIManager:close(dialog)
-                                    end,
-                                },
-                                {
-                                    text = _("Unbookmark User"),
-                                    callback = function()
-                                        -- Remove the fandom from bookmarks
-                                        for i, v in ipairs(users) do
-                                            if v == user then
-                                                table.remove(users, i)
-                                                break
-                                            end
-                                        end
-                                        Config:saveSetting("bookmarkedUsers", users)
-                                        UIManager:show(InfoMessage:new({
-                                            text = T("User: '%1' has been removed from your bookmarks.", user),
-                                        }))
-                                        UIManager:close(dialog)
-                                        self.menuWidget.item_table = refreshMenu() -- Refresh the menu to update the star
-                                        self.menuWidget:updateItems()
-                                    end,
-                                },
-                            },
-                        },
-
-                    })
-                    UIManager:show(dialog)
-                end,
+                    local username, pseud
+                    if string.find(user, "%(") and string.find(user, "%)") then
+                        username = string.match(user, "%((.-)%)")
+                        pseud = string.match(user, "^(.-)%s*%(")
+                    else
+                        username = user
+                        pseud = user
+                    end
+                    self.fanfic:showUserInfo(username, pseud, self.menuWidget)
+                end
             })
         end
 
@@ -620,42 +585,8 @@ function FanficMenu:onSearchUser()
                                 table.insert(menu_items, {
                                     text = T("%1 (%2) | (%3 works) (%4 bookmarks)",user.pseud, user.username, tostring(user.works_count), tostring(user.bookmarks_count)),
                                     callback = function()
-                                        local dialog
-                                        dialog = ButtonDialog:new({
-                                            buttons = {
-                                                {
-                                                    {
-                                                        text = _("View user profile"),
-                                                        callback = function()
-                                                            self.fanfic:showUserInfo(user.username, user.pseud, self.menuWidget)
-                                                            UIManager:close(dialog)
-                                                        end,
-                                                    },
-                                                },
-                                                {
-                                                    {
-                                                        text = _("Bookmark User"),
-                                                        callback = function()
-                                                            local users = Config:readSetting("bookmarkedUsers", {})
-                                                            if not util.contains(users, user.username) then
-                                                                table.insert(users, user.username)
-                                                                Config:saveSetting("bookmarkedUsers", users)
-                                                                UIManager:show(InfoMessage:new({
-                                                                    text = T("User: '%1' has been added to your bookmarks.", user.username),
-                                                                }))
-                                                            else
-                                                                UIManager:show(InfoMessage:new({
-                                                                    text = T("User: '%1' is already in your bookmarks.", user.username),
-                                                                }))
-                                                            end
-                                                            UIManager:close(dialog)
-                                                        end,
-                                                    },
-                                                },
-                                            },
-                                        })
-                                        UIManager:show(dialog)
-                                    end,
+                                        self.fanfic:showUserInfo(user.username, user.pseud, self.menuWidget)
+                                    end
                                 })
                             end
                             return menu_items
