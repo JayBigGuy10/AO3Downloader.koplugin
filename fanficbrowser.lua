@@ -210,7 +210,7 @@ function FanficCardPage:buildCard(fanfic)
     local content_width = self.item_width
 
     local title_face = Font:getFace("tfont", 24)
-    local body_face = Font:getFace("cfont", 22)
+    local body_face = Font:getFace("cfont", 20)
     local stats_face = Font:getFace("ffont", 18)
 
     -- Normalize fields that may arrive as comma-separated strings
@@ -298,10 +298,10 @@ function FanficCardPage:buildCard(fanfic)
     else
         title_text = fanfic.title or "Untitled"
         if fanfic.is_restricted then
-            title_text = "[Restricted] " .. title_text
+            title_text = "🔒 " .. title_text
         end
         if DownloadedFanfics.checkIfStored(fanfic.id) then
-            title_text = "[dl] " .. title_text
+            title_text = "✓ " .. title_text
         end
     end
     local title_line_height = TextBoxWidget:new{
@@ -360,11 +360,11 @@ function FanficCardPage:buildCard(fanfic)
         local stats_parts = {}
         if fanfic.rating then
             local short_ratings = {
-                ["Not Rated"] = "N/A",
-                ["General Audiences"] = "G",
-                ["Teen And Up Audiences"] = "T",
-                ["Mature"] = "M",
-                ["Explicit"] = "E",
+                ["Not Rated"] = "None",
+                ["General Audiences"] = "General",
+                ["Teen And Up Audiences"] = "Teen",
+                ["Mature"] = "Mature",
+                ["Explicit"] = "Explicit",
             }
             table.insert(stats_parts, "Rating: " .. (short_ratings[fanfic.rating] or fanfic.rating))
         end
@@ -383,7 +383,7 @@ function FanficCardPage:buildCard(fanfic)
             width = content_width,
         })
 
-        local chapter_line = (fanfic.iswip or "Unknown") .. ", " .. (fanfic.chapters or "?/?") .. " chapters"
+        local chapter_line = (fanfic.iswip or "Unknown") .. ", " .. (fanfic.chapters or "?/?") .. " Chapters"
         addElement(TextBoxWidget:new{
             text = chapter_line,
             face = stats_face,
@@ -685,10 +685,11 @@ function FanficBrowser:show(ui, ficResults, fetchNextPage, updateFanficCallback,
     self.Fanfic = Fanfic
 
     -- Remove the total field so it does not get treated as a fanfic entry.
+    local total_fic_count = ficResults.total
     ficResults.total = nil
 
     local browse_window = FanficCardPage:new{
-        title = _("AO3 Search Results"),
+        title = _("AO3 Search Results " .. (total_fic_count and ("| " .. total_fic_count .. " Found")) ),
         fanfics = ficResults,
         fetchNextPage = fetchNextPage,
         -- Pass callbacks through so the card page can trigger actions
