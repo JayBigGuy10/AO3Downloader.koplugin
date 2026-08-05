@@ -689,7 +689,7 @@ function FanficBrowser:show(ui, ficResults, fetchNextPage, updateFanficCallback,
     ficResults.total = nil
 
     local browse_window = FanficCardPage:new{
-        title = _("AO3 Search Results " .. (total_fic_count and ("| " .. total_fic_count .. " Found")) ),
+        title = _("AO3 Search Results" .. (total_fic_count > -1 and (" | " .. total_fic_count .. " Found") or "") ),
         fanfics = ficResults,
         fetchNextPage = fetchNextPage,
         -- Pass callbacks through so the card page can trigger actions
