@@ -77,36 +77,119 @@ end
 
 local FanficMenu = {}
 
+function FanficMenu:getRecentDownloadedFanficItems(limit)
+    local downloaded_fanfics = DownloadedFanfics.getAll()
+    if not downloaded_fanfics or next(downloaded_fanfics) == nil then
+        return {}
+    end
+
+    local fanfics = {}
+    for __, fanfic in pairs(downloaded_fanfics) do
+        if fanfic.path and fanfic.title then
+            table.insert(fanfics, fanfic)
+        end
+    end
+
+    table.sort(fanfics, function(a, b)
+        return (a.last_accessed or "") > (b.last_accessed or "")
+    end)
+
+    local menu_items = {}
+    local max_items = math.min(limit or 5, #fanfics)
+    for i = 1, max_items do
+        local fanfic = fanfics[i]
+
+        local fanfic_read = true
+        local first_unread_chapter = nil
+        if fanfic.chapter_data and #fanfic.chapter_data > 0 then
+            for index, chapter in pairs(fanfic.chapter_data) do
+                if not chapter.read then
+                    fanfic_read = false
+                    break
+                else
+                    first_unread_chapter = index
+                end
+            end
+        elseif not fanfic.chapter_data or #fanfic.chapter_data == 0 and fanfic.read then
+            fanfic_read = true
+        else
+            fanfic_read = false
+        end
+
+        local fanfic_complete = true
+
+        local chapter_count, chapter_total = fanfic.chapters:match("([^//]+)/([^//]+)")
+
+        if string.find(fanfic.chapters, "?") or chapter_count < chapter_total then
+            fanfic_complete = false
+        end
+
+        local prefix = "  "
+        if fanfic_read and (not fanfic_complete) then
+            prefix = "="
+        elseif fanfic_read and fanfic_complete then
+            prefix = "✓"
+        elseif first_unread_chapter and (not fanfic_read) then
+            prefix = tostring(first_unread_chapter)
+        end
+
+        table.insert(menu_items, {
+            text = T("%1 (%2) %3 by %4", prefix, fanfic.chapters, fanfic.title, fanfic.author),
+            callback = function()
+                fanfic.last_accessed = os.date("%Y-%m-%d %H:%M:%S")
+                DownloadedFanfics.update(fanfic)
+                self.fanfic:onOpenFanficReader(fanfic.path, fanfic)
+            end,
+        })
+    end
+
+    return menu_items
+end
+
 function FanficMenu:show(fanfic)
     self.fanfic = fanfic
+
+    local root_menu_items = {
+        {
+            text = "\u{f002} Search and download works from AO3",
+            callback = function()
+                self:onSearchFanficMenu()
+            end,
+        },
+        {
+            text = "\u{2193} View downloaded fanfics",
+            callback = function()
+                self:onViewDownloadedFanfics()
+            end,
+        },
+        {
+            text = "→ Account",
+            callback = function()
+                self:onAccountManagementMenu()
+            end,
+        },
+        {
+            text = "\u{2699} Settings",
+            callback = function()
+                self:onOpenSettings()
+            end,
+        },
+        {
+            text = "",
+        },
+        {
+            text = "Recent Fics:",
+        }
+    }
+
+    local recent_fanfic_items = self:getRecentDownloadedFanficItems(5)
+    for __, menu_item in ipairs(recent_fanfic_items) do
+        table.insert(root_menu_items, menu_item)
+    end
+
     self.menuWidget = FanficMenuWidget:new({
         title = _("AO3 downloader"),
-        item_table = {
-            {
-                text = "\u{f002} Search and download works from AO3",
-                callback = function()
-                    self:onSearchFanficMenu()
-                end,
-            },
-            {
-                text = "\u{2193} View downloaded fanfics",
-                callback = function()
-                    self:onViewDownloadedFanfics()
-                end,
-            },
-            {
-                text = "Account management",
-                callback = function()
-                    self:onAccountManagementMenu()
-                end,
-            },
-            {
-                text = "\u{2699} Settings",
-                callback = function()
-                    self:onOpenSettings()
-                end,
-            },
-        },
+        item_table = root_menu_items,
         Fanfic = self.fanfic,
     })
 
