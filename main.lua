@@ -101,10 +101,10 @@ function Fanfic:onShowFanficBrowser(ficResults, fetchNextPage)
         self.ui,
         ficResults,
         fetchNextPage,
-        function(fanfic) self:UpdateFanfic(fanfic) end, -- Update callback
-        function(fanficId) self:DownloadFanfic(fanficId) end, -- Download callback
-        function (author)
-            -- Check if author contains pseud, if yes parse the pseud (format: "pseeud (username)" or username)
+        function(fanfic) self:UpdateFanfic(fanfic) end,
+        function(fanficId) self:DownloadFanfic(fanficId) end,
+        function(author)
+            -- Parse pseud from "pseud (username)" format if present
             local username
             local pseud
 
@@ -117,9 +117,22 @@ function Fanfic:onShowFanficBrowser(ficResults, fetchNextPage)
             end
             logger.dbg("Opening user browser for author: " .. username .. " pseud: " .. pseud)
             self:showUserInfo(username, pseud)
-
-        end,-- Open author user browser callback
-        self
+        end,
+        self,
+        function(tag)
+            -- Search by tag from the card view. Uses "revised_at" (date updated)
+            -- as the default sort because it matches AO3's default tag page order.
+            UIManager:scheduleIn(1, function()
+                local success, tagResults, tagFetchNextPage = self:fetchFanficsByTag(tag, "revised_at")
+                if success then
+                    self:onShowFanficBrowser(tagResults, tagFetchNextPage)
+                end
+            end)
+            UIManager:show(InfoMessage:new{
+                text = _("Searching works by tag..."),
+                timeout = 1,
+            })
+        end
     )
 
 end
