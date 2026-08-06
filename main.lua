@@ -116,7 +116,14 @@ function Fanfic:onShowFanficBrowser(ficResults, fetchNextPage)
                 pseud = author
             end
             logger.dbg("Opening user browser for author: " .. username .. " pseud: " .. pseud)
-            self:showUserInfo(username, pseud)
+            
+            UIManager:scheduleIn(1, function()
+                self:showUserInfo(username, pseud)
+            end)
+            UIManager:show(InfoMessage:new{
+                text = _("Opening Author: " .. author),
+                timeout = 1,
+            })
         end,
         self,
         function(tag)
@@ -129,7 +136,7 @@ function Fanfic:onShowFanficBrowser(ficResults, fetchNextPage)
                 end
             end)
             UIManager:show(InfoMessage:new{
-                text = _("Searching works by tag..."),
+                text = _("Searching works by tag: " .. tag),
                 timeout = 1,
             })
         end
