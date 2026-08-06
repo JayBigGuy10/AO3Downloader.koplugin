@@ -97,8 +97,8 @@ end
 function FanficCardPage:_populateItems()
     if not self._card_init_done then return end
 
-    -- Fetch the next AO3 page when arriving at the last loaded fanfic.
-    if self.show_page == self.pages and self.fetchNextPage then
+    -- Fetch the next AO3 page when arriving at the last loaded fanfic, but not if we have already loaded all items from the search
+    if self.show_page == self.pages and self.fetchNextPage and self.show_page ~= self.totalFanfics then
         local new_fics = self.fetchNextPage()
         if new_fics and #new_fics > 0 then
             for _, fic in ipairs(new_fics) do
@@ -685,12 +685,13 @@ function FanficBrowser:show(ui, ficResults, fetchNextPage, updateFanficCallback,
     self.Fanfic = Fanfic
 
     -- Remove the total field so it does not get treated as a fanfic entry.
-    local total_fic_count = ficResults.total
+    local totalFanfics = ficResults.total
     ficResults.total = nil
 
     local browse_window = FanficCardPage:new{
-        title = _("AO3 Search Results" .. (total_fic_count > -1 and (" | " .. total_fic_count .. " Found") or "") ),
+        title = _("AO3 Search Results" .. (totalFanfics > -1 and (" | " .. totalFanfics .. " Found") or "") ),
         fanfics = ficResults,
+        totalFanfics = totalFanfics,
         fetchNextPage = fetchNextPage,
         -- Pass callbacks through so the card page can trigger actions
         updateFanficCallback = updateFanficCallback,
