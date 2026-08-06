@@ -5,6 +5,7 @@ local util = require("util")
 local logger = require("logger")
 local DownloadedFanfics = require("downloaded_fanfics")
 local FanficReader = require("fanfic_reader")
+local FanficBrowser = require("fanficbrowser")
 local _ = require("gettext")
 local FFIUtil = require("ffi/util")
 local T = FFIUtil.template
@@ -174,49 +175,19 @@ function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic
                                                 text = _("View Details"),
                                                 callback = function()
                                                     -- Show detailed information
-                                                    local details = string.format(
-                                                        "Fandoms: %s\n\nStatus: %s \nChapters: %s\nPublished: %s\nUpdated: %s\nAuthor: %s\n\nSummary:\n%s\n\nRating: %s\nCategory: %s\n\nTags:\nWarnings:\n%s\n\nRelationships:\n%s\n\nCharacters:\n%s\n\nOther Tags:\n%s\n\nStats: \nWords: %s \nHits: %s\nKudos: %s\nBookmarks: %s\nComments: %s",
-                                                        (
-                                                            #fanfic.fandoms > 0 and table.concat(fanfic.fandoms, ", ")
-                                                            or "No fandoms available"
-                                                        ),
-                                                        fanfic.iswip or "Unknown",
-                                                        fanfic.chapters or "Unknown",
-                                                        fanfic.published or "Unknown",
-                                                        fanfic.updated or "Unknown",
-                                                        fanfic.author or "Unknown",
-                                                        fanfic.summary or "No summary available",
-                                                        fanfic.rating or "Unknown",
-                                                        fanfic.category or "Unknown",
-                                                        (
-                                                            #fanfic.warnings > 0 and table.concat(fanfic.warnings, ", ")
-                                                            or "No warnings available"
-                                                        ),
-                                                        (
-                                                            #fanfic.relationships > 0
-                                                            and table.concat(fanfic.relationships, ", ")
-                                                            or "No relationships available"
-                                                        ),
-                                                        (
-                                                            #fanfic.characters > 0
-                                                            and table.concat(fanfic.characters, ", ")
-                                                            or "No characters available"
-                                                        ),
-                                                        (
-                                                            #fanfic.tags > 0 and table.concat(fanfic.tags, ", ")
-                                                            or "No tags available"
-                                                        ),
-                                                        fanfic.wordcount or "Unknown",
-                                                        fanfic.hits or "0",
-                                                        fanfic.kudos or "0",
-                                                        fanfic.bookmarks or "0",
-                                                        fanfic.comments or "0"
+                                                    FanficBrowser:show(
+                                                        ui,
+                                                        {
+                                                            fanfic,
+                                                            total = 1
+                                                        },
+                                                        nil,
+                                                        nil,
+                                                        nil,
+                                                        nil,
+                                                        self.Fanfic,
+                                                        nil
                                                     )
-                                                    UIManager:show(TextViewer:new({
-                                                        title = fanfic.title,
-                                                        text = details,
-                                                    }))
-                                                    UIManager:close(dialog)
                                                 end,
                                             },
                                         },
