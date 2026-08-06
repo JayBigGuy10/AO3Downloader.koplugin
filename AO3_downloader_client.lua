@@ -1282,7 +1282,7 @@ function AO3WebParser:parseWorkElement(element)
 
         -- Extract additional metadata
         local date = dateElement and encodeHelper:parseToCodepoints(dateElement:getcontent()) or "N/A"
-        local language = languageElement and encodeHelper:parseToCodepoints(languageElement:getcontent()) or "N/A"
+        local language = languageElement and encodeHelper:parseToCodepoints(languageElement:getcontent():gsub("%s+", "")) or "N/A"
         local words = wordsElement and encodeHelper:parseToCodepoints(wordsElement:getcontent()) or "N/A"
         local chapters = chaptersElement and encodeHelper:parseToCodepoints(chaptersElement:getcontent():gsub("<[^>]+>", ""))
             or "N/A"
@@ -1343,9 +1343,9 @@ function AO3WebParser:parseWorkElement(element)
             characters = characters or {},
             warnings = warnings or {},
             fandoms = fandoms or {},
-            date = date,
+            updated = date,
             language = language,
-            words = words,
+            wordcount = words,
             chapters = chapters,
             hits = hits,
             comments = comments,
@@ -1526,7 +1526,7 @@ function AO3WebParser:parseWorkPage(root)
     local updatedDate = updatedElement and encodeHelper:parseToCodepoints(updatedElement:getcontent()) or "Unknown date"
     local chapters = chaptersElement and encodeHelper:parseToCodepoints(chaptersElement:getcontent():gsub("<[^>]+>", ""))
         or "Unknown chapters"
-    local language = languageElement and encodeHelper:parseToCodepoints(languageElement:getcontent()) or "Unknown language"
+    local language = languageElement and encodeHelper:parseToCodepoints(languageElement:getcontent():gsub("%s+", "")) or "Unknown language"
 
     -- Extract EPUB link
     local epub_link = nil

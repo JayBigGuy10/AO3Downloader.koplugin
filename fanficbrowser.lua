@@ -356,6 +356,19 @@ function FanficCardPage:buildCard(fanfic)
     addSpacing(Size.padding.small)
 
     if not fanfic.is_deleted then
+
+        local document_parts = {}
+        if fanfic.wordcount then
+            table.insert(document_parts, "Words: " .. formatNumber(fanfic.wordcount))
+        end
+        table.insert(document_parts, (fanfic.chapters or "?/?") .. " Chapters")
+        table.insert(document_parts, fanfic.iswip or "Unknown")
+        addElement(TextBoxWidget:new{
+            text = table.concat(document_parts, " | "),
+            face = stats_face,
+            width = content_width,
+        })
+
         -- == STATS ==
         local stats_parts = {}
         if fanfic.rating then
@@ -368,14 +381,14 @@ function FanficCardPage:buildCard(fanfic)
             }
             table.insert(stats_parts, "Rating: " .. (short_ratings[fanfic.rating] or fanfic.rating))
         end
-        if fanfic.words then
-            table.insert(stats_parts, "Words: " .. formatNumber(fanfic.words))
-        end
         if fanfic.language then
             table.insert(stats_parts, fanfic.language)
         end
-        if fanfic.date then
-            table.insert(stats_parts, fanfic.date)
+        if fanfic.published then
+            table.insert(stats_parts, "\u{f093} " .. fanfic.published)
+        end
+        if fanfic.updated then
+            table.insert(stats_parts, "\u{f040} " .. fanfic.updated)
         end
         addElement(TextBoxWidget:new{
             text = table.concat(stats_parts, " | "),
@@ -383,21 +396,27 @@ function FanficCardPage:buildCard(fanfic)
             width = content_width,
         })
 
-        local chapter_line = (fanfic.iswip or "Unknown") .. ", " .. (fanfic.chapters or "?/?") .. " Chapters"
-        addElement(TextBoxWidget:new{
-            text = chapter_line,
-            face = stats_face,
-            width = content_width,
-        })
-
         local engagement_parts = {}
-        if fanfic.hits then table.insert(engagement_parts, "Hits: " .. formatNumber(fanfic.hits)) end
-        if fanfic.kudos then table.insert(engagement_parts, "Kudos: " .. formatNumber(fanfic.kudos)) end
-        if fanfic.bookmarks then table.insert(engagement_parts, "Bookmarks: " .. formatNumber(fanfic.bookmarks)) end
-        if fanfic.comments then table.insert(engagement_parts, "Comments: " .. formatNumber(fanfic.comments)) end
+        if fanfic.hits then table.insert(engagement_parts, "\u{f080}  " .. formatNumber(fanfic.hits)) end
+        if fanfic.kudos then table.insert(engagement_parts, "♥ " .. formatNumber(fanfic.kudos)) end
+        if fanfic.bookmarks then table.insert(engagement_parts, "\u{f02e} " .. formatNumber(fanfic.bookmarks)) end
+        if fanfic.comments then table.insert(engagement_parts, "\u{f075} " .. formatNumber(fanfic.comments)) end
         if #engagement_parts > 0 then
             addElement(TextBoxWidget:new{
                 text = table.concat(engagement_parts, " | "),
+                face = stats_face,
+                width = content_width,
+            })
+        end
+
+        local saved_parts = {}
+        if fanfic.bookmarkID then table.insert(saved_parts, fanfic.bookmarkID and "Bookmarked: " .. (("Yes (" .. tostring(fanfic.bookmarkID) ..")") or "No")) end
+        if fanfic.markedForLater then table.insert(saved_parts, fanfic.markedForLater and "Marked for Later: " .. ("Yes" or "No")) end
+        if fanfic.subscriptionID then table.insert(saved_parts, fanfic.subscriptionID and "Subscribed: " .. (("Yes (" .. fanfic.subscriptionID ..")") or "No")) end
+
+        if #saved_parts > 0 then
+            addElement(TextBoxWidget:new{
+                text = table.concat(saved_parts, " | "),
                 face = stats_face,
                 width = content_width,
             })

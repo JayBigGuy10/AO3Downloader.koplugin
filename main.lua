@@ -189,6 +189,7 @@ function Fanfic:DownloadFanfic(id)
         title = request_result.work_metadata.title,
         author = request_result.work_metadata.author,
         chapters = request_result.work_metadata.chapters,
+        language = request_result.work_metadata.language,
         chapter_data = request_result.work_metadata.chapterData,
         summary = request_result.work_metadata.summary,
         fandoms = request_result.work_metadata.fandoms,
@@ -270,8 +271,8 @@ function Fanfic:UpdateFanfic(fanfic)
     -- Update the metadata and file path
     fanfic.path = fanfic.path
     fanfic.title = request_result.work_metadata.title or fanfic.title
-    fanfic.date = request_result.work_metadata.date or fanfic.date
     fanfic.chapters = request_result.work_metadata.chapters or fanfic.chapters
+    fanfic.language = request_result.work_metadata.language or fanfic.language
     fanfic.author = request_result.work_metadata.author or fanfic.author
     fanfic.fandoms = request_result.work_metadata.fandoms or fanfic.fandoms
     fanfic.summary = request_result.work_metadata.summary or fanfic.summary
