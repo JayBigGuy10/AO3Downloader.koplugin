@@ -139,6 +139,19 @@ function Fanfic:onShowFanficBrowser(ficResults, fetchNextPage)
                 text = _("Searching works by tag: " .. tag),
                 timeout = 1,
             })
+        end,
+        function(series)
+            -- Search by series
+            UIManager:scheduleIn(1, function()
+                local success, tagResults, seriesFetchNextPage = self:getWorksFromSeries(series.id)
+                if success then
+                    self:onShowFanficBrowser(tagResults, seriesFetchNextPage)
+                end
+            end)
+            UIManager:show(InfoMessage:new{
+                text = _("Opening series: " .. series.title),
+                timeout = 1,
+            })
         end
     )
 
@@ -193,6 +206,7 @@ function Fanfic:DownloadFanfic(id)
         chapter_data = request_result.work_metadata.chapterData,
         summary = request_result.work_metadata.summary,
         fandoms = request_result.work_metadata.fandoms,
+        series = request_result.work_metadata.series,
         tags = request_result.work_metadata.tags,
         relationships = request_result.work_metadata.relationships,
         characters = request_result.work_metadata.characters,
@@ -278,6 +292,7 @@ function Fanfic:UpdateFanfic(fanfic)
     fanfic.language = request_result.work_metadata.language or fanfic.language
     fanfic.author = request_result.work_metadata.author or fanfic.author
     fanfic.fandoms = request_result.work_metadata.fandoms or fanfic.fandoms
+    fanfic.series = request_result.work_metadata.series or fanfic.series
     fanfic.summary = request_result.work_metadata.summary or fanfic.summary
     fanfic.tags = request_result.work_metadata.tags or fanfic.tags
     fanfic.relationships = request_result.work_metadata.relationships or fanfic.relationships
@@ -626,7 +641,7 @@ function Fanfic:getWorksFromSeries(series_id)
             return {}
         end
 
-        return  next_page_result.works
+        return next_page_result.works
 
     end
 

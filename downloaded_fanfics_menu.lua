@@ -203,6 +203,7 @@ function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic
                                                         nil,
                                                         nil,
                                                         self.Fanfic,
+                                                        nil,
                                                         nil
                                                     )
                                                 end,
