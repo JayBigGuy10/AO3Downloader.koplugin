@@ -1552,7 +1552,7 @@ function AO3WebParser:parseSeries(root, header)
         series_meta.wordcount = wordsElement and encodeHelper:parseToCodepoints(wordsElement:getcontent()) or "0"
         local bookmarksElement = series_element:select("dd.bookmarks")[1]
         series_meta.bookmarks = bookmarksElement and encodeHelper:parseToCodepoints(bookmarksElement:getcontent():gsub("<[^>]+>", "")) or "0"
-        series_meta.id = -1
+        series_meta.id = nil
         series_meta.relationships = {}
         series_meta.characters = {}
         series_meta.warnings = {}

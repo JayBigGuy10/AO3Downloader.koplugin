@@ -98,7 +98,6 @@ end
 function Fanfic:onShowFanficBrowser(ficResults, fetchNextPage)
     logger.dbg("AO3Downloader.koplugin: Showing fanfic browser")
     FanficBrowser:show(
-        self.ui,
         ficResults,
         fetchNextPage,
         function(fanfic) self:UpdateFanfic(fanfic) end,
