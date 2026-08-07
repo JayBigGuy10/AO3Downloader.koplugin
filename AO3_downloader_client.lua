@@ -74,6 +74,16 @@ function encodeHelper:parseToCodepoints(str)
     return self:unescapeText(str)
 end
 
+function encodeHelper:parseFromHTML(str)
+    return encodeHelper:parseToCodepoints(
+                    str
+                        :gsub("<br%s*/?>", "\n") -- Replace <br> tags with new lines
+                        :gsub("</p>", "\n\n") -- Add double new lines for paragraph breaks
+                        :gsub("<[^>]+>", "") -- Remove other HTML tags
+                        :gsub("^%s*(.-)%s*$", "%1") -- Trim whitespace
+                )
+end
+
 function encodeHelper:generateParametersStringForm(params)
     local form_parts = {}
     for key, value in pairs(params) do
@@ -582,7 +592,7 @@ function AO3DownloaderClient:getWorksFromSeries(series_id, page_no)
 
     local root = htmlparser.parse(html_body)
 
-    local works = AO3WebParser:parseWorkSearchResults(root)
+    local works = AO3WebParser:parseSeries(root, page_no==1)
 
     return {
         success = true,
@@ -1047,6 +1057,96 @@ function AO3WebParser:parseWorkSearchResults(root)
     return works
 end
 
+-- AO3WebParser
+function AO3WebParser:parseSeries(root, header)
+    local works = {}
+    local count = 1
+
+    local worksCountElement = root:select("dd.works")[1]
+    if worksCountElement then
+        local worksCount = worksCountElement:getcontent()
+        if worksCount then
+            worksCount = tonumber(worksCount:gsub(",", ""), 10)
+            if header then
+                worksCount = worksCount + 1
+            end
+            works["total"] = worksCount
+        end
+    end
+
+    if header then
+
+        local series_meta = {}
+
+        -- Authors
+        local author_table = {}
+        for _, author in pairs(root:select('dl.series.meta.group dd a[rel="author"]')) do
+            table.insert(author_table, author:getcontent())
+        end
+
+        series_meta.author = #author_table > 0 and table.concat(author_table, ", ") or ""
+
+        local dts = root:select('dl.series.meta.group dt')
+        local dds = root:select('dl.series.meta.group dd')
+        for i, dt in pairs(dts) do
+            local content = dt:getcontent()
+
+            local value = dds[i]:getcontent()
+
+            if content == "Series Begun:" then
+                series_meta.published = value
+            end
+                
+            if content == "Series Updated:" then
+                series_meta.updated = value
+            end
+
+            if content == "Description:" then
+                series_meta.summary = "Summary: \n\n" .. encodeHelper:parseFromHTML(value)
+            end
+
+            if content == "Notes:" then
+                series_meta.summary = (series_meta.summary and series_meta.summary or "") .. "\n\nNotes: \n\n" .. encodeHelper:parseFromHTML(value)
+            end
+
+            if content == "Complete:" then
+                series_meta.iswip = "Complete: " .. (value and value or "?")
+            end 
+                
+        end
+        
+        local titleElement = root:select("h2.heading")[1]
+        series_meta.title = encodeHelper:parseFromHTML(titleElement:getcontent())
+        local restrictedElement = root:select("h2.heading > img[title='Restricted']")[1]
+        series_meta.is_restricted = restrictedElement and true or false
+        local series_element = root:select("dl.series")[1]
+        local wordsElement = series_element:select("dd.words")[1]
+        series_meta.wordcount = wordsElement and encodeHelper:parseToCodepoints(wordsElement:getcontent()) or "0"
+        local bookmarksElement = series_element:select("dd.bookmarks")[1]
+        series_meta.bookmarks = bookmarksElement and encodeHelper:parseToCodepoints(bookmarksElement:getcontent():gsub("<[^>]+>", "")) or "0"
+        series_meta.id = -1
+        series_meta.relationships = {}
+        series_meta.characters = {}
+        series_meta.warnings = {}
+        series_meta.fandoms = {}
+        series_meta.series = {}
+
+        table.insert(works, count, series_meta)
+        count = count + 1
+    end
+
+    local elements = root:select("li.work")
+    for _, element in ipairs(elements) do
+        local work = self:parseWorkElement(element)
+        if work then
+            table.insert(works, count, work)
+            count = count + 1
+        end
+    end
+
+    return works
+end
+
 function AO3WebParser:parseUserBookmarks(root)
     local bookmarks = {}
     local elements = root:select("li.bookmark")
@@ -1147,12 +1247,7 @@ function AO3WebParser:parseUserSeriesPage(root)
             end
 
             local summaryElement = element:select(".summary")[1]
-            local summary = summaryElement and encodeHelper:parseToCodepoints(summaryElement:getcontent()
-                :gsub("<br%s*/?>", "\n") -- Replace <br> tags with new lines
-                :gsub("</p>", "\n\n") -- Add double new lines for paragraph breaks
-                :gsub("<[^>]+>", "") -- Remove other HTML tags
-                :gsub("^%s*(.-)%s*$", "%1") -- Trim whitespace) or ""
-            )
+            local summary = summaryElement and encodeHelper:parseFromHTML(summaryElement:getcontent())
 
             local wordCountElement = element:select("dd.words")[1]
             logger.dbg(wordCountElement and wordCountElement:getcontent():gsub(",", "") or "No word count element found")
@@ -1199,6 +1294,7 @@ function AO3WebParser:parseWorkElement(element)
     local charactersElement = element:select(".tags > .characters")
     local warningsElement = element:select(".tags > .warnings")
     local fandomsElement = element:select(".fandoms")[1]
+    local seriesElement = element:select("ul.series")[1]
     local dateElement = element:select(".datetime")[1]
     local languageElement = element:select("dd.language")[1]
     local wordsElement = element:select("dd.words")[1]
@@ -1280,6 +1376,21 @@ function AO3WebParser:parseWorkElement(element)
             end
         end
 
+        local series = {}
+        if seriesElement then
+            for _, position in ipairs(seriesElement:select("li")) do
+                local strong = position:select("strong")[1]
+                local link = position:select("a")[1]
+
+                local part = strong and strong:getcontent()
+                local title = link and link:getcontent()
+                local series_id = link and link.attributes.href:match("/series/(%d+)")
+                if part and title and series_id then
+                    table.insert(series, { part = part, title = title, id = series_id })
+                end
+            end
+        end
+
         -- Extract additional metadata
         local date = dateElement and encodeHelper:parseToCodepoints(dateElement:getcontent()) or "N/A"
         local language = languageElement and encodeHelper:parseToCodepoints(languageElement:getcontent():gsub("%s+", "")) or "N/A"
@@ -1311,15 +1422,7 @@ function AO3WebParser:parseWorkElement(element)
         local tags = #tags > 0 and table.concat(tags, ", ") or "N/A"
 
         -- Remove HTML formatting, replace <br> with new lines, and preserve paragraph formatting
-        local summary = summaryElement
-                and encodeHelper:parseToCodepoints(
-                    summaryElement
-                        :getcontent()
-                        :gsub("<br%s*/?>", "\n") -- Replace <br> tags with new lines
-                        :gsub("</p>", "\n\n") -- Add double new lines for paragraph breaks
-                        :gsub("<[^>]+>", "") -- Remove other HTML tags
-                        :gsub("^%s*(.-)%s*$", "%1") -- Trim whitespace
-                )
+        local summary = summaryElement and encodeHelper:parseFromHTML(summaryElement:getcontent())
             or "No summary available"
 
         -- Remove leading and trailing whitespace from the title
@@ -1343,6 +1446,7 @@ function AO3WebParser:parseWorkElement(element)
             characters = characters or {},
             warnings = warnings or {},
             fandoms = fandoms or {},
+            series = series or {},
             updated = date,
             language = language,
             wordcount = words,
@@ -1404,6 +1508,7 @@ function AO3WebParser:parseWorkPage(root)
 
     -- Extract additional metadata
     local fandomElement = root:select(".fandom > ul")[1]
+    local seriesElement = root:select("dd.series")[1]
     local publishedElement = root:select("dd.published")[1]
     local updatedElement = root:select("dd.status")[1]
     local chaptersElement = root:select("dd.chapters")[1]
@@ -1438,14 +1543,7 @@ function AO3WebParser:parseWorkPage(root)
     local gifted_to = giftElements and table.concat(giftedTo_table, ", ") or nil
 
     local summary = summaryElement
-        and encodeHelper:parseToCodepoints(
-            summaryElement
-            :getcontent()
-            :gsub("<br%s*/?>", "\n") -- Replace <br> tags with new lines
-            :gsub("</p>", "\n\n") -- Add double new lines for paragraph breaks
-            :gsub("<[^>]+>", "") -- Remove other HTML tags
-            :gsub("^%s*(.-)%s*$", "%1") -- Trim whitespace
-        )
+        and encodeHelper:parseFromHTML(summaryElement:getcontent())
         or "No summary available"
 
     local chapterData = {}
@@ -1522,6 +1620,20 @@ function AO3WebParser:parseWorkPage(root)
         end
     end
 
+    local series = {}
+    if seriesElement then
+        for _, position in ipairs(seriesElement:select("span.series > span.position")) do
+            local content = position:getcontent()
+
+            local part = content:match("^Part%s+(%d+)%s+of")
+            local title = position:select("a")[1]:getcontent()
+            local series_id = content:match("/series/(%d+)")
+            if part and title and series_id then
+                table.insert(series, {part = part, title = title, id = series_id})
+            end
+        end
+    end
+
     local publishedDate = publishedElement and encodeHelper:parseToCodepoints(publishedElement:getcontent()) or "Unknown date"
     local updatedDate = updatedElement and encodeHelper:parseToCodepoints(updatedElement:getcontent()) or "Unknown date"
     local chapters = chaptersElement and encodeHelper:parseToCodepoints(chaptersElement:getcontent():gsub("<[^>]+>", ""))
@@ -1563,6 +1675,7 @@ function AO3WebParser:parseWorkPage(root)
         characters = characters or {},
         warnings = warnings or {},
         fandoms = fandoms or {},
+        series = series or {},
         published = publishedDate,
         updated = updatedDate,
         wordcount = wordcount,

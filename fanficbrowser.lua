@@ -361,7 +361,9 @@ function FanficCardPage:buildCard(fanfic)
         if fanfic.wordcount then
             table.insert(document_parts, "Words: " .. formatNumber(fanfic.wordcount))
         end
-        table.insert(document_parts, (fanfic.chapters or "?/?") .. " Chapters")
+        if fanfic.chapters then
+            table.insert(document_parts, fanfic.chapters .. " Chapters")
+        end
         table.insert(document_parts, fanfic.iswip or "Unknown")
         addElement(TextBoxWidget:new{
             text = table.concat(document_parts, " | "),
@@ -397,10 +399,12 @@ function FanficCardPage:buildCard(fanfic)
         })
 
         local engagement_parts = {}
-        if fanfic.hits then table.insert(engagement_parts, "\u{f080}  " .. formatNumber(fanfic.hits)) end
-        if fanfic.kudos then table.insert(engagement_parts, "♥ " .. formatNumber(fanfic.kudos)) end
-        if fanfic.bookmarks then table.insert(engagement_parts, "\u{f02e} " .. formatNumber(fanfic.bookmarks)) end
         if fanfic.comments then table.insert(engagement_parts, "\u{f075} " .. formatNumber(fanfic.comments)) end
+        if fanfic.kudos then table.insert(engagement_parts, "♥ " .. formatNumber(fanfic.kudos)) end
+
+        if fanfic.bookmarks then table.insert(engagement_parts, "\u{f02e} " .. formatNumber(fanfic.bookmarks)) end
+        if fanfic.hits then table.insert(engagement_parts, "\u{f080}  " .. formatNumber(fanfic.hits)) end
+        
         if #engagement_parts > 0 then
             addElement(TextBoxWidget:new{
                 text = table.concat(engagement_parts, " | "),
@@ -439,51 +443,78 @@ function FanficCardPage:buildCard(fanfic)
         }:getSize().h
 
         -- Fandom - tap to search by fandom tag
-        local fandom_full = "Fandom: " .. (#fanfic.fandoms > 0 and table.concat(fanfic.fandoms, ", ") or "None listed")
-        local fandom_display = truncateToFit(fandom_full, stats_face, tag_line_height)
-        local fandom_callback = nil
-        if #fanfic.fandoms > 0 and self.searchByTagCallback then
-            fandom_callback = function()
-                self:onTagFieldTap(fanfic.fandoms, "Fandom", fandom_full)
+        if #fanfic.fandoms > 0 then 
+            local fandom_full = "Fandom: " .. table.concat(fanfic.fandoms, ", ")
+            local fandom_display = truncateToFit(fandom_full, stats_face, tag_line_height)
+            local fandom_callback = nil
+            if #fanfic.fandoms > 0 and self.searchByTagCallback then
+                fandom_callback = function()
+                    self:onTagFieldTap(fanfic.fandoms, "Fandom", fandom_full)
+                end
             end
+            addTappableField(fandom_display, fandom_full, stats_face, tag_line_height, fandom_callback)
         end
-        addTappableField(fandom_display, fandom_full, stats_face, tag_line_height, fandom_callback)
 
         -- Warnings - display only, tap to expand if truncated
-        local warnings_full = "Warnings: " .. (#fanfic.warnings > 0 and table.concat(fanfic.warnings, ", ") or "None")
-        local warnings_display = truncateToFit(warnings_full, stats_face, tag_line_height)
-        addTappableField(warnings_display, warnings_full, stats_face, tag_line_height)
+        if #fanfic.warnings > 0 then
+            local warnings_full = "Warnings: " .. table.concat(fanfic.warnings, ", ")
+            local warnings_display = truncateToFit(warnings_full, stats_face, tag_line_height)
+            addTappableField(warnings_display, warnings_full, stats_face, tag_line_height)
+        end
 
         -- Relationships - tap to search by relationship tag
-        local rel_full = "Relationships: "
-        if fanfic.category and fanfic.category ~= "" then
-            rel_full = rel_full .. "(" .. fanfic.category .. ") "
-        end
-        rel_full = rel_full .. (#fanfic.relationships > 0 and table.concat(fanfic.relationships, ", ") or "None listed")
-        local rel_display = truncateToFit(rel_full, stats_face, tag_line_height)
-        local rel_callback = nil
-        if #fanfic.relationships > 0 and self.searchByTagCallback then
-            rel_callback = function()
-                self:onTagFieldTap(fanfic.relationships, "Relationship", rel_full)
+        if fanfic.category or #fanfic.relationships > 0 then
+            local rel_full = "Relationships: "
+            if fanfic.category and fanfic.category ~= "" then
+                rel_full = rel_full .. "(" .. fanfic.category .. ") "
             end
-        end
-        addTappableField(rel_display, rel_full, stats_face, tag_line_height, rel_callback)
+            rel_full = rel_full .. (#fanfic.relationships > 0 and table.concat(fanfic.relationships, ", ") or "None listed")
+            local rel_display = truncateToFit(rel_full, stats_face, tag_line_height)
+            local rel_callback = nil
+            if #fanfic.relationships > 0 and self.searchByTagCallback then
+                rel_callback = function()
+                    self:onTagFieldTap(fanfic.relationships, "Relationship", rel_full)
+                end
+            end
+            addTappableField(rel_display, rel_full, stats_face, tag_line_height, rel_callback)
+        end 
 
         -- Characters - tap to search by character tag
-        local char_full = "Characters: " .. (#fanfic.characters > 0 and table.concat(fanfic.characters, ", ") or "None listed")
-        local char_display = truncateToFit(char_full, stats_face, tag_line_height)
-        local char_callback = nil
-        if #fanfic.characters > 0 and self.searchByTagCallback then
-            char_callback = function()
-                self:onTagFieldTap(fanfic.characters, "Character", char_full)
+        if #fanfic.characters > 0 then
+            local char_full = "Characters: " .. table.concat(fanfic.characters, ", ")
+            local char_display = truncateToFit(char_full, stats_face, tag_line_height)
+            local char_callback = nil
+            if self.searchByTagCallback then
+                char_callback = function()
+                    self:onTagFieldTap(fanfic.characters, "Character", char_full)
+                end
             end
+            addTappableField(char_display, char_full, stats_face, tag_line_height, char_callback)
         end
-        addTappableField(char_display, char_full, stats_face, tag_line_height, char_callback)
 
-        -- Tags - tap to expand if truncated, no search
-        local tags_full = "Tags: " .. (#fanfic.tags > 0 and table.concat(fanfic.tags, ", ") or "None")
-        local tags_display = truncateToFit(tags_full, stats_face, tag_line_height)
-        addTappableField(tags_display, tags_full, stats_face, tag_line_height)
+                    -- Tags - tap to expand if truncated, no search
+        if #fanfic.tags > 0 then
+            local tags_full = "Tags: " .. table.concat(fanfic.tags, ", ")
+            local tags_display = truncateToFit(tags_full, stats_face, tag_line_height)
+            addTappableField(tags_display, tags_full, stats_face, tag_line_height)
+        end
+
+        -- Series
+        if fanfic.series and #fanfic.series > 0 then
+            local parts = {}
+            for _, s in ipairs(fanfic.series) do
+                table.insert(parts, ("Part %s of %s"):format(s.part, s.title))
+            end
+            local series_full = "Series: " .. table.concat(parts, ", ")
+            local series_display = truncateToFit(series_full, stats_face, tag_line_height)
+            local series_callback = nil
+            if self.searchByTagCallback then
+                series_callback = function()
+                    self:onSeriesFieldTap(fanfic.series, series_full)
+                end
+            end
+            addTappableField(series_display, series_full, stats_face, tag_line_height,series_callback)
+        end
 
         -- == SEPARATOR before summary ==
         addSpacing(Size.padding.small)
@@ -517,6 +548,9 @@ end
 
 -- Title tap: show download dialog for new fics, or update/open for downloaded ones.
 function FanficCardPage:onTitleTap(fanfic)
+    if fanfic.id < 0 then
+        return
+    end
     local downloaded = DownloadedFanfics.checkIfStored(fanfic.id)
     if downloaded then
         local dialog
@@ -636,6 +670,47 @@ function FanficCardPage:onTagFieldTap(values, category, full_text)
     end
 end
 
+-- Tag field tap: if one value, search directly. If multiple, show a picker.
+-- The picker also offers an "expand" option to view the full text.
+function FanficCardPage:onSeriesFieldTap(values, full_text)
+    if #values == 1 then
+        self.openSeriesCallback(values[1])
+    elseif #values > 1 then
+        -- Build buttons: each value searches, plus an expand option
+        local buttons = {}
+        for _, value in ipairs(values) do
+            table.insert(buttons, {{
+                text = value.title,
+                callback = function()
+                    UIManager:close(self._picker_dialog)
+                    self.openSeriesCallback(value)
+                end,
+            }})
+        end
+        table.insert(buttons, {{
+            text = _("View all"),
+            callback = function()
+                UIManager:close(self._picker_dialog)
+                UIManager:show(TextViewer:new{
+                    title = "Series",
+                    text = full_text,
+                })
+            end,
+        }})
+        table.insert(buttons, {{
+            text = _("Close"),
+            callback = function()
+                UIManager:close(self._picker_dialog)
+            end,
+        }})
+        self._picker_dialog = ButtonDialog:new{
+            title = "Open series",
+            buttons = buttons,
+        }
+        UIManager:show(self._picker_dialog)
+    end
+end
+
 function FanficBrowser:showDownloadDialog(fanfic)
     local confirmDialog
     confirmDialog = ButtonDialog:new({
@@ -695,12 +770,13 @@ end
 --- Main entry point - called by main.lua and fanfic_menu.lua.
 -- searchByTagCallback is optional; when provided, fandom/relationship/character
 -- fields become tappable to trigger a tag search.
-function FanficBrowser:show(ui, ficResults, fetchNextPage, updateFanficCallback, downloadFanficCallback, showAuthorInfoCallback, Fanfic, searchByTagCallback)
+function FanficBrowser:show(ui, ficResults, fetchNextPage, updateFanficCallback, downloadFanficCallback, showAuthorInfoCallback, Fanfic, searchByTagCallback, openSeriesCallback)
     self.ui = ui
     self.updateFanficCallback = updateFanficCallback
     self.downloadFanficCallback = downloadFanficCallback
     self.showAuthorInfoCallback = showAuthorInfoCallback
     self.searchByTagCallback = searchByTagCallback
+    self.openSeriesCallback = openSeriesCallback
     self.Fanfic = Fanfic
 
     -- Remove the total field so it does not get treated as a fanfic entry.
@@ -717,6 +793,7 @@ function FanficBrowser:show(ui, ficResults, fetchNextPage, updateFanficCallback,
         downloadFanficCallback = downloadFanficCallback,
         showAuthorInfoCallback = showAuthorInfoCallback,
         searchByTagCallback = searchByTagCallback,
+        openSeriesCallback = openSeriesCallback,
         Fanfic = Fanfic,
     }
 
