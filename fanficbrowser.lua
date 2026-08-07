@@ -548,7 +548,7 @@ end
 
 -- Title tap: show download dialog for new fics, or update/open for downloaded ones.
 function FanficCardPage:onTitleTap(fanfic)
-    if fanfic.id < 0 then
+    if fanfic.id == nil then
         return
     end
     local downloaded = DownloadedFanfics.checkIfStored(fanfic.id)
@@ -770,14 +770,9 @@ end
 --- Main entry point - called by main.lua and fanfic_menu.lua.
 -- searchByTagCallback is optional; when provided, fandom/relationship/character
 -- fields become tappable to trigger a tag search.
-function FanficBrowser:show(ui, ficResults, fetchNextPage, updateFanficCallback, downloadFanficCallback, showAuthorInfoCallback, Fanfic, searchByTagCallback, openSeriesCallback)
-    self.ui = ui
-    self.updateFanficCallback = updateFanficCallback
+function FanficBrowser:show(ficResults, fetchNextPage, updateFanficCallback, downloadFanficCallback, showAuthorInfoCallback, Fanfic, searchByTagCallback, openSeriesCallback)
+
     self.downloadFanficCallback = downloadFanficCallback
-    self.showAuthorInfoCallback = showAuthorInfoCallback
-    self.searchByTagCallback = searchByTagCallback
-    self.openSeriesCallback = openSeriesCallback
-    self.Fanfic = Fanfic
 
     -- Remove the total field so it does not get treated as a fanfic entry.
     local totalFanfics = ficResults.total

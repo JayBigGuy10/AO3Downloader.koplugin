@@ -175,20 +175,11 @@ function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic
                                                 text = _("View Details"),
                                                 callback = function()
                                                     -- Show detailed information
-                                                    FanficBrowser:show(
-                                                        ui,
-                                                        {
+                                                    self.Fanfic:onShowFanficBrowser({
                                                             fanfic,
                                                             total = 1
                                                         },
-                                                        nil,
-                                                        nil,
-                                                        nil,
-                                                        nil,
-                                                        self.Fanfic,
-                                                        nil,
-                                                        nil
-                                                    )
+                                                        nil)
                                                 end,
                                             },
                                         },
