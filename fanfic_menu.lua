@@ -75,6 +75,32 @@ function FanficMenuWidget:onClose()
     return Menu.onClose(self)
 end
 
+function FanficMenuWidget:onSwipe(arg, ges_ev)
+    local direction = ges_ev.direction
+    if direction == "west" then
+        self:onNextPage()
+    elseif direction == "east" then
+        self:onPrevPage()
+    elseif direction == "south" then
+        if not self.no_title then
+            -- If there is a titlebar with a close button displayed (so, this Menu can be
+            -- closed), allow easier closing with swipe south.
+            if #self.paths == 0 then
+                self:onClose()
+            end
+            self:onReturn()
+        end
+        -- If there is no close button, it's a top level Menu and swipe
+        -- up/down may hide/show top menu
+    elseif direction == "north" then
+        -- no use for now
+        do end -- luacheck: ignore 541
+    else -- diagonal swipe
+        -- trigger full refresh
+        UIManager:setDirty(nil, "full")
+    end
+end
+
 local FanficMenu = {}
 
 function FanficMenu:getRecentDownloadedFanficItems(limit)
