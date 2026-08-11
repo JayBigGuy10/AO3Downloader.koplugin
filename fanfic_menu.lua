@@ -157,19 +157,19 @@ function FanficMenu:show(fanfic)
             end,
         },
         {
-            text = "\u{2193} View downloaded fanfics",
+            text = "\u{f15c} View downloaded fanfics",
             callback = function()
                 self:onViewDownloadedFanfics()
             end,
         },
         {
-            text = "→ Account",
+            text = "\u{f007} Account",
             callback = function()
                 self:onAccountManagementMenu()
             end,
         },
         {
-            text = "\u{2699} Settings",
+            text = "\u{f013} Settings",
             callback = function()
                 self:onOpenSettings()
             end,
