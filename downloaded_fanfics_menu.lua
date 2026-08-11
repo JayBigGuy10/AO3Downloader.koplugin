@@ -273,7 +273,7 @@ function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic
                                                                         end
 
                                                                         for _, chapter in ipairs(fanfic.chapter_data) do
-                                                                            if chapter["1"] <= N then
+                                                                            if (chapter["1"] and chapter["1"] <= N) or (chapter[1] and chapter[1] <= N) then
                                                                                 chapter.read = true
                                                                             else
                                                                                 chapter.read = false
