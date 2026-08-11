@@ -492,7 +492,7 @@ function FanficCardPage:buildCard(fanfic)
             addTappableField(char_display, char_full, stats_face, tag_line_height, char_callback)
         end
 
-                    -- Tags - tap to expand if truncated, no search
+        -- Tags - tap to expand if truncated, no search
         if #fanfic.tags > 0 then
             local tags_full = "Tags: " .. table.concat(fanfic.tags, ", ")
             local tags_display = truncateToFit(tags_full, stats_face, tag_line_height)
@@ -770,16 +770,29 @@ end
 --- Main entry point - called by main.lua and fanfic_menu.lua.
 -- searchByTagCallback is optional; when provided, fandom/relationship/character
 -- fields become tappable to trigger a tag search.
-function FanficBrowser:show(ficResults, fetchNextPage, updateFanficCallback, downloadFanficCallback, showAuthorInfoCallback, Fanfic, searchByTagCallback, openSeriesCallback)
+function FanficBrowser:show(Fanfic, ficResults, fetchNextPage, updateFanficCallback, downloadFanficCallback, showAuthorInfoCallback, searchByTagCallback, openSeriesCallback)
 
     self.downloadFanficCallback = downloadFanficCallback
 
     -- Remove the total field so it does not get treated as a fanfic entry.
-    local totalFanfics = ficResults.total
-    ficResults.total = nil
+    local totalFanfics = -1
+    
+    if ficResults.total then
+        totalFanfics = ficResults.total
+        ficResults.total = nil
+    end
+    
+
+    local title = "AO3 Search Results"
+    if ficResults.searchType then
+        title = ficResults.searchType
+        ficResults.searchType = nil
+    end
+
+    title = title .. (totalFanfics > -1 and (" | " .. ((title == "AO3 Series") and (totalFanfics-1 .. " Works") or (totalFanfics .. " Found"))) or "")
 
     local browse_window = FanficCardPage:new{
-        title = _("AO3 Search Results" .. (totalFanfics > -1 and (" | " .. totalFanfics .. " Found") or "") ),
+        title = title,
         fanfics = ficResults,
         totalFanfics = totalFanfics,
         fetchNextPage = fetchNextPage,

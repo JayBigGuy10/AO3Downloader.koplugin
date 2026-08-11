@@ -98,6 +98,7 @@ end
 function Fanfic:onShowFanficBrowser(ficResults, fetchNextPage)
     logger.dbg("AO3Downloader.koplugin: Showing fanfic browser")
     FanficBrowser:show(
+        self,
         ficResults,
         fetchNextPage,
         function(fanfic) self:UpdateFanfic(fanfic) end,
@@ -124,7 +125,6 @@ function Fanfic:onShowFanficBrowser(ficResults, fetchNextPage)
                 timeout = 1,
             })
         end,
-        self,
         function(tag)
             -- Search by tag from the card view. Uses "revised_at" (date updated)
             -- as the default sort because it matches AO3's default tag page order.

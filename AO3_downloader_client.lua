@@ -594,6 +594,8 @@ function AO3DownloaderClient:getWorksFromSeries(series_id, page_no)
 
     local works = AO3WebParser:parseSeries(root, page_no==1)
 
+    works["searchType"] = "AO3 Series"
+
     return {
         success = true,
         works = works,
@@ -717,6 +719,8 @@ function AO3DownloaderClient:getWorksFromAccountHistory(marked_for_later, page_n
     local works = nil
 
     works = AO3WebParser:parseAccountHistory(root)
+
+    works["searchType"] = marked_for_later and "AO3 Account Marked For Later" or "AO3 Account History"
 
     return {
         success = true,
