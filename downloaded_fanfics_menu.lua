@@ -1,4 +1,5 @@
 local ButtonDialog = require("ui/widget/buttondialog")
+local InputDialog = require("ui/widget/inputdialog")
 local InfoMessage = require("ui/widget/infomessage")
 local TextViewer = require("ui/widget/textviewer")
 local util = require("util")
@@ -27,6 +28,43 @@ local function normalizeField(field)
     else
         return {}    -- Default to an empty table
     end
+end
+
+local function formatFanficTitle(fanfic)
+    local fanfic_read = true
+    local first_unread_chapter = nil
+    if fanfic.chapter_data and #fanfic.chapter_data > 0 then
+        for index, chapter in pairs(fanfic.chapter_data) do
+            if not chapter.read then
+                fanfic_read = false
+                break
+            else
+                first_unread_chapter = index
+            end
+        end
+    elseif not fanfic.chapter_data or #fanfic.chapter_data == 0 and fanfic.read then
+        fanfic_read = true
+    else
+        fanfic_read = false
+    end
+
+    local fanfic_complete = true
+
+    local chapter_count, chapter_total = fanfic.chapters:match("([^//]+)/([^//]+)")
+
+    if string.find(fanfic.chapters, "?") or chapter_count < chapter_total then
+        fanfic_complete = false
+    end
+
+    local prefix = "  "
+    if fanfic_read and (not fanfic_complete) then
+        prefix = "="
+    elseif fanfic_read and fanfic_complete then
+        prefix = "✓"
+    elseif first_unread_chapter and (not fanfic_read) then
+        prefix = tostring(first_unread_chapter)
+    end
+    return T("%1 (%2) %3 by %4", prefix, fanfic.chapters, fanfic.title, fanfic.author)
 end
 
 function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic)
@@ -93,42 +131,8 @@ function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic
                     local submenu_items = {}
                     local fandom_fanfic_count = #fanfics
                     for __, fanfic in pairs(fanfics) do
-                        local fanfic_read = true
-                        local first_unread_chapter = nil
-                        if fanfic.chapter_data and #fanfic.chapter_data > 0 then
-                            for index, chapter in pairs(fanfic.chapter_data) do
-                                if not chapter.read then
-                                    fanfic_read = false
-                                    break
-                                else
-                                    first_unread_chapter = index
-                                end
-                            end
-                        elseif not fanfic.chapter_data or #fanfic.chapter_data == 0 and fanfic.read then
-                            fanfic_read = true
-                        else
-                            fanfic_read = false
-                        end
-
-                        local fanfic_complete = true
-
-                        local chapter_count, chapter_total = fanfic.chapters:match("([^//]+)/([^//]+)")
-
-                        if string.find(fanfic.chapters, "?") or chapter_count < chapter_total then
-                            fanfic_complete = false
-                        end
-
-                        local prefix = "  "
-                        if fanfic_read and (not fanfic_complete) then
-                            prefix = "=" 
-                        elseif fanfic_read and fanfic_complete then
-                            prefix = "✓"
-                        elseif first_unread_chapter and (not fanfic_read) then
-                            prefix = tostring(first_unread_chapter)
-                        end
-
                         table.insert(submenu_items, {
-                            text = T("%1 (%2) %3 by %4",prefix, fanfic.chapters, fanfic.title, fanfic.author),
+                            text = formatFanficTitle(fanfic),
                             id = fanfic.id,
                             callback = function()
                                 -- Show options for the fanfic
@@ -169,9 +173,7 @@ function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic
                                 dialog = ButtonDialog:new({
                                     title = T(_("Options for '%1'"), fanfic.title),
                                     buttons = {
-                                        
-                                            open_buttons
-                                        ,
+                                        open_buttons,
                                         {
                                             {
                                                 text = _("Update"),
@@ -180,6 +182,19 @@ function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic
                                                         -- Update the fanfic
                                                         updateFanficCallback(fanfic)
                                                         UIManager:close(dialog)
+
+                                                        local downloaded_fanfics = DownloadedFanfics.getAll()
+                                                        fanfic = downloaded_fanfics[fanfic.id]
+
+                                                        for i, menu_item in pairs(parentMenu.item_table) do
+                                                            if tostring(menu_item.id) == tostring(fanfic.id) then
+                                                                parentMenu.item_table[i].text = formatFanficTitle(fanfic)
+                                                            end
+                                                        end
+                                                        
+                                                        parentMenu:updateItems()
+                                                        local new_download_menu_items = refreshDownloadMenu()
+                                                        parentMenu:updateMenuBack(1, nil, new_download_menu_items, nil)
                                                     end)
                                                     UIManager:show(InfoMessage:new({
                                                         text = _("Downloading work may take some time…"),
@@ -194,9 +209,99 @@ function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic
                                                     -- Show detailed information
                                                     self.Fanfic:onShowFanficBrowser({
                                                             fanfic,
-                                                            total = 1
+                                                            searchType = "AO3 Work Details"
                                                         },
                                                         nil)
+                                                end,
+                                            },
+                                        },
+                                        {
+                                            {
+                                                text = _("Refresh"),
+                                                callback = function()
+                                                    UIManager:scheduleIn(1, function()
+                                                        -- Refresh the fanfic metadata
+                                                        updateFanficCallback(fanfic, true)
+                                                        UIManager:close(dialog)
+
+                                                        local downloaded_fanfics = DownloadedFanfics.getAll()
+                                                        fanfic = downloaded_fanfics[fanfic.id]
+
+                                                        for i, menu_item in pairs(parentMenu.item_table) do
+                                                            if tostring(menu_item.id) == tostring(fanfic.id) then
+                                                                parentMenu.item_table[i].text = formatFanficTitle(fanfic)
+                                                            end
+                                                        end
+                                                        
+                                                        parentMenu:updateItems()
+                                                        local new_download_menu_items = refreshDownloadMenu()
+                                                        parentMenu:updateMenuBack(1, nil, new_download_menu_items, nil)
+                                                    end)
+                                                    UIManager:show(InfoMessage:new({
+                                                        text = _("Refreshing metadata may take some time…"),
+                                                        timeout = 1,
+                                                    }))
+                                                end,
+                                            },
+                                            {
+                                                text = _("Set Progress"),
+                                                callback = function()
+                                                    local input_dialog
+                                                    input_dialog = InputDialog:new({
+                                                        title = "Set progress up to chapter:",
+                                                        input = "",
+                                                        input_type = "text",
+                                                        allow_newline = true,
+                                                        buttons = {
+                                                            {
+                                                                {
+                                                                    text = "Cancel",
+                                                                    id = "close",
+                                                                    callback = function()
+                                                                        UIManager:close(input_dialog)
+                                                                    end,
+                                                                },
+                                                                {
+                                                                    text = "Set",
+                                                                    is_enter_default = true,
+                                                                    callback = function()
+                                                                        local input = input_dialog:getInputText()
+                                                                        local N = tonumber(input)
+                                                                        -- reject charecters and decimals and negatives
+                                                                        if input == "" or not N or N % 1 ~= 0 or N < 0 then
+                                                                            return
+                                                                        end
+
+                                                                        for _, chapter in ipairs(fanfic.chapter_data) do
+                                                                            if chapter["1"] <= N then
+                                                                                chapter.read = true
+                                                                            else
+                                                                                chapter.read = false
+                                                                            end
+                                                                        end
+
+                                                                        DownloadedFanfics.update(fanfic)
+
+                                                                        for i, menu_item in pairs(parentMenu.item_table) do
+                                                                            if tostring(menu_item.id) == tostring(fanfic.id) then
+                                                                                parentMenu.item_table[i].text = formatFanficTitle(fanfic)
+                                                                            end
+                                                                        end
+                                                                        
+                                                                        parentMenu:updateItems()
+                                                                        local new_download_menu_items = refreshDownloadMenu()
+                                                                        parentMenu:updateMenuBack(1, nil, new_download_menu_items, nil)
+
+                                                                        UIManager:close(input_dialog)
+                                                                        UIManager:close(dialog)
+                                                                        
+                                                                    end,
+                                                                },
+                                                            },
+                                                        },
+                                                    })
+                                                    UIManager:show(input_dialog)
+                                                    input_dialog:onShowKeyboard()
                                                 end,
                                             },
                                         },

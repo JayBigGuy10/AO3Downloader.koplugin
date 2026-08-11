@@ -246,7 +246,7 @@ function Fanfic:DownloadFanfic(id)
     })
 end
 
-function Fanfic:UpdateFanfic(fanfic)
+function Fanfic:UpdateFanfic(fanfic, metadataOnly)
     local NetworkMgr = require("ui/network/manager")
 
     if not NetworkMgr:isConnected() then
@@ -263,26 +263,27 @@ function Fanfic:UpdateFanfic(fanfic)
         return
     end
 
-    -- Extract the EPUB link from the metadata
-    local url = request_result.work_metadata.epub_link
-    if not url then
-        UIManager:show(InfoMessage:new{
-            text = _("Error: EPUB link not found for this work")
-        })
-        return
+    if not metadataOnly then
+        -- Extract the EPUB link from the metadata
+        local url = request_result.work_metadata.epub_link
+        if not url then
+            UIManager:show(InfoMessage:new {
+                text = _("Error: EPUB link not found for this work")
+            })
+            return
+        end
+
+        os.execute("sleep " .. math.random(2, 5)) -- Random delay between 2-5 seconds
+
+        -- Re-download the EPUB file
+        local download_request_result = AO3DownloaderClient:downloadEpub(url, fanfic.path)
+        if not download_request_result.success then
+            UIManager:show(InfoMessage:new {
+                text = "Error: failed to download and write updated EPUB"
+            })
+            return
+        end
     end
-
-    os.execute("sleep " .. math.random(2, 5)) -- Random delay between 2-5 seconds
-
-    -- Re-download the EPUB file
-    local download_request_result = AO3DownloaderClient:downloadEpub(url, fanfic.path)
-    if not download_request_result.success then
-        UIManager:show(InfoMessage:new{
-            text = "Error: failed to download and write updated EPUB"
-        })
-        return
-    end
-
 
     -- Update the metadata and file path
     fanfic.path = fanfic.path

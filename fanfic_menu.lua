@@ -590,8 +590,8 @@ function FanficMenu:onBrowseByTag(selectedTag)
 end
 
 function FanficMenu:onViewDownloadedFanfics()
-    DownloadedFanficsMenu:show(self.fanfic.ui, self.menuWidget, function(fanfic)
-        self.fanfic:UpdateFanfic(fanfic)
+    DownloadedFanficsMenu:show(self.fanfic.ui, self.menuWidget, function(fanfic, metadataOnly)
+        self.fanfic:UpdateFanfic(fanfic, metadataOnly)
     end, self.fanfic)
 end
 
