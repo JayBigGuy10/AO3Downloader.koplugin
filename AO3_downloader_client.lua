@@ -627,7 +627,7 @@ function AO3DownloaderClient:getWorksFromCollection(collection_id, page_no)
 
     local root = htmlparser.parse(html_body)
 
-    local works = AO3WebParser:parseSeries(root, page_no==1)
+    local works = AO3WebParser:parseWorkSearchResults(root)
 
     works["searchType"] = "AO3 Collection"
 
