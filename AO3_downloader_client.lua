@@ -2016,7 +2016,8 @@ function AO3WebParser:parseWorkElement(element)
         local tags = #tags > 0 and table.concat(tags, ", ") or "N/A"
 
         -- Remove HTML formatting, replace <br> with new lines, and preserve paragraph formatting
-        local summary = summaryElement and encodeHelper:parseFromHTML(summaryElement:getcontent())
+        local summary = summaryElement
+            and encodeHelper:parseFromHTML(summaryElement:getcontent())
             or "No summary available"
 
         -- Remove leading and trailing whitespace from the title
