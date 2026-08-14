@@ -258,7 +258,6 @@ function AO3UserBrowser:openUserSeriesList()
                         return
                     end
 
-                    seriesWorks.total = series.work_count or 0
                     self.Fanfic:onShowFanficBrowser(seriesWorks, fetchNextPage)
                 end,
                 seperator = true,
