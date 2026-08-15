@@ -3,6 +3,7 @@ local _ = require("gettext")
 local FFIUtil = require("ffi/util")
 local T = FFIUtil.template
 local logger = require("logger")
+local NetworkMgr = require("ui/network/manager")
 local UIManager = require("ui/uimanager")
 local InfoMessage = require("ui/widget/infomessage")
 local ConfirmBox = require("ui/widget/confirmbox")
@@ -148,8 +149,6 @@ function Fanfic:onShowFanficBrowser(ficResults, fetchNextPage)
 end
 
 function Fanfic:DownloadFanfic(id)
-    local NetworkMgr = require("ui/network/manager")
-
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected(function () self:DownloadFanfic(id) end)
         return
@@ -239,8 +238,6 @@ function Fanfic:DownloadFanfic(id)
 end
 
 function Fanfic:UpdateFanfic(fanfic, metadataOnly)
-    local NetworkMgr = require("ui/network/manager")
-
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected(function () self:UpdateFanfic(fanfic) end)
         return
@@ -331,8 +328,6 @@ function Fanfic:UpdateFanfic(fanfic, metadataOnly)
 end
 
 function Fanfic:fetchFanficsByTag(selectedFandom, sortBy)
-    local NetworkMgr = require("ui/network/manager")
-
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false
@@ -370,8 +365,6 @@ function Fanfic:fetchFanficsByTag(selectedFandom, sortBy)
 end
 
 function Fanfic:getWorksFromAccountHistory(marked_for_later)
-    local NetworkMgr = require("ui/network/manager")
-
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false
@@ -409,8 +402,6 @@ function Fanfic:getWorksFromAccountHistory(marked_for_later)
 end
 
 function Fanfic:executeSearch(parameters)
-    local NetworkMgr = require("ui/network/manager")
-
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false
@@ -455,7 +446,6 @@ end
 
 
 function Fanfic:searchForUsers(query)
-    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false, {}
@@ -508,7 +498,6 @@ function Fanfic:showUserInfo(username, pseud)
 end
 
 function Fanfic:getUserData(username, pseud)
-    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false, {}
@@ -526,7 +515,6 @@ function Fanfic:getUserData(username, pseud)
 end
 
 function Fanfic:getWorksFromUserPage(username, pseud, category, fandom_id)
-    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false, {}
@@ -566,7 +554,6 @@ function Fanfic:getWorksFromUserPage(username, pseud, category, fandom_id)
 end
 
 function Fanfic:getPseudsForUser(username)
-    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false, {}
@@ -584,7 +571,6 @@ function Fanfic:getPseudsForUser(username)
 end
 
 function Fanfic:getSeriesFromUserPage(username, pseud)
-    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false, {}
@@ -602,7 +588,6 @@ function Fanfic:getSeriesFromUserPage(username, pseud)
 end
 
 function Fanfic:getCollectionsFromUserPage(username)
-    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false, {}
@@ -641,7 +626,6 @@ function Fanfic:getCollectionsFromUserPage(username)
 end
 
 function Fanfic:getWorksFromSeries(series_id)
-    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false, {}
@@ -682,7 +666,6 @@ function Fanfic:getWorksFromSeries(series_id)
 end
 
 function Fanfic:getWorksFromCollection(collection_id)
-    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false, {}
@@ -723,7 +706,6 @@ function Fanfic:getWorksFromCollection(collection_id)
 end
 
 function Fanfic:searchForTags(query, type)
-    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false, {}
@@ -739,7 +721,6 @@ function Fanfic:searchForTags(query, type)
 end
 
 function Fanfic:checkLoggedIn()
-    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return
@@ -757,7 +738,6 @@ function Fanfic:checkLoggedIn()
 end
 
 function Fanfic:loginToAO3(username, password)
-    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false
@@ -780,7 +760,6 @@ function Fanfic:loginToAO3(username, password)
 end
 
 function Fanfic:logoutOfAO3()
-    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false
