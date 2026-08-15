@@ -3,6 +3,7 @@ local UIManager = require("ui/uimanager")
 local DownloadedFanfics = require("downloaded_fanfics")
 local InfoMessage = require("ui/widget/infomessage")
 local Config = require("fanfic_config")
+local MenuStack = require("menu_stack")
 local _ = require("gettext")
 local util = require("util")
 local FFIUtil = require("ffi/util")
@@ -808,10 +809,10 @@ function FanficBrowser:show(Fanfic, ficResults, fetchNextPage, updateFanficCallb
     -- Assigned after construction so the closure captures the populated
     -- local rather than a nil upvalue from inside the constructor table.
     browse_window.close_callback = function()
-        Fanfic.menu_stack[browse_window] = nil
+        MenuStack.menu_stack[browse_window] = nil
     end
 
-    Fanfic.menu_stack[browse_window] = true
+    MenuStack.menu_stack[browse_window] = true
     UIManager:show(browse_window)
 end
 

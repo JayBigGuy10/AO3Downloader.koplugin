@@ -16,6 +16,7 @@ local CustomFilterMenu = require("custom_filter_menu")
 local MultiInputDialog = require("ui/widget/multiinputdialog")
 local filemanagerutil = require("apps/filemanager/filemanagerutil")
 local DownloadedFanfics = require("downloaded_fanfics")
+local MenuStack = require("menu_stack")
 
 function util.contains(table, value)
     for _, v in ipairs(table) do
@@ -27,7 +28,6 @@ function util.contains(table, value)
 end
 
 local FanficMenuWidget = Menu:extend({
-    fanfic = nil,
     is_popout = false,
     is_borderless = true,
     paths = nil,
@@ -71,7 +71,7 @@ function FanficMenuWidget:updateMenuBack(backAmount, newTitle, newItems, newSubt
 end
 
 function FanficMenuWidget:onClose()
-    self.Fanfic.menu_stack[self] = nil
+    MenuStack.menu_stack[self] = nil
     return Menu.onClose(self)
 end
 
@@ -216,10 +216,9 @@ function FanficMenu:show(fanfic)
     self.menuWidget = FanficMenuWidget:new({
         title = _("AO3 downloader"),
         item_table = root_menu_items,
-        Fanfic = self.fanfic,
     })
 
-    self.fanfic.menu_stack[self.menuWidget] = true
+    MenuStack.menu_stack[self.menuWidget] = true
 
     return self.menuWidget
 end

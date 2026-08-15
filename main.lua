@@ -15,11 +15,11 @@ local Config = require("fanfic_config")
 local Event = require("ui/event")
 local Dispatcher = require("dispatcher")
 local AO3DownloaderClient = require("AO3_downloader_client")
+local MenuStack = require("menu_stack")
 
 local Fanfic = WidgetContainer:extend{
     name = "AO3 downloader",
     is_doc_only = false,
-    menu_stack = {}
 }
 
 function Fanfic:init()
@@ -66,21 +66,12 @@ function Fanfic:onOpenAO3DownloaderMenu()
 end
 
 function Fanfic:onOpenFanficReader(fanfic_path, current_fanfic, start_chapter)
-    self:closeAllMenus()
+    MenuStack:closeAllMenus()
     FanficReader:show({
         fanfic_path = fanfic_path,
         current_fanfic = current_fanfic,
         chapter_opening_at = start_chapter,
     })
-end
-
-function Fanfic:closeAllMenus()
-    for menu_widget, _ in pairs(self.menu_stack) do
-        if menu_widget then
-            UIManager:close(menu_widget)
-        end
-    end
-    self.menu_stack = {}
 end
 
 function Fanfic.GenerateFileName(metadata)

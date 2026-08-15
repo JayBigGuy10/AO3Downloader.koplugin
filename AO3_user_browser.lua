@@ -5,6 +5,7 @@ local FFIUtil = require("ffi/util")
 local T = FFIUtil.template
 local logger = require("logger")
 local InfoMessage = require("ui/widget/infomessage")
+local MenuStack = require("menu_stack")
 
 local AO3UserBrowser = {
     Fanfic = nil,
@@ -209,7 +210,7 @@ end
 function AO3UserBrowser:loadPage(title, menu_table)
     if self.AO3UserWindow then
         UIManager:close(self.AO3UserWindow)
-        self.Fanfic.menu_stack[self.AO3UserWindow] = nil
+        MenuStack.menu_stack[self.AO3UserWindow] = nil
     end
 
     self.AO3UserWindow = UserWindow:new({
@@ -220,7 +221,7 @@ function AO3UserBrowser:loadPage(title, menu_table)
         is_borderless = true,
         show_page = 1,
     })
-    self.Fanfic.menu_stack[self.AO3UserWindow] = true
+    MenuStack.menu_stack[self.AO3UserWindow] = true
     UIManager:show(self.AO3UserWindow)
 end
 
