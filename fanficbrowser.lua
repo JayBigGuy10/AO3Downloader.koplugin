@@ -776,7 +776,7 @@ end
 --- Main entry point - called by main.lua and fanfic_menu.lua.
 -- searchByTagCallback is optional; when provided, fandom/relationship/character
 -- fields become tappable to trigger a tag search.
-function FanficBrowser:show(Fanfic, ficResults, fetchNextPage, updateFanficCallback, downloadFanficCallback, showAuthorInfoCallback, searchByTagCallback, openSeriesCallback)
+function FanficBrowser:show(ficResults, fetchNextPage, updateFanficCallback, downloadFanficCallback, showAuthorInfoCallback, searchByTagCallback, openSeriesCallback)
 
     self.downloadFanficCallback = downloadFanficCallback
 
@@ -808,7 +808,6 @@ function FanficBrowser:show(Fanfic, ficResults, fetchNextPage, updateFanficCallb
         showAuthorInfoCallback = showAuthorInfoCallback,
         searchByTagCallback = searchByTagCallback,
         openSeriesCallback = openSeriesCallback,
-        Fanfic = Fanfic,
     }
 
     -- Assigned after construction so the closure captures the populated
