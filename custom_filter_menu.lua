@@ -7,6 +7,7 @@ local UIManager = require("ui/uimanager")
 local util = require("util")
 local logger = require("logger")
 local _ = require("gettext")
+local AO3Manager = require("AO3_manager")
 
 function util.contains(tableValue, value, comparisonFunction)
     logger.dbg(tableValue)
@@ -220,7 +221,7 @@ function CustomFilterMenu:tagSelectionWidget(title, tagCatagoryForSearch, settin
                                     if value == "" then
                                         return
                                     end
-                                    local success, tagSearchResults = self.fanfic:searchForTags(value, tagCatagoryForSearch)
+                                    local success, tagSearchResults = AO3Manager:searchForTags(value, tagCatagoryForSearch)
                                     if success then
                                         self:tagSearchSelectionWidget(
                                             "Tap on character tags to add to filter",
@@ -404,7 +405,7 @@ function CustomFilterMenu:singleTagSelection(title, tagCatagoryForSearch, settin
                         if value == "" then
                             return
                         end
-                        local success, tagSearchResults = self.fanfic:searchForTags(value, tagCatagoryForSearch)
+                        local success, tagSearchResults = AO3Manager:searchForTags(value, tagCatagoryForSearch)
                         if success then
                             self:singleTagSearchSelection(
                                 "Tap on character tags to add to filter",
@@ -452,9 +453,8 @@ function CustomFilterMenu:singleTagSearchSelection(title, tagSearchResults, sett
     self.menuWidget:GoDownInMenu(title, menu_items)
 end
 
-function CustomFilterMenu:show(menuWidget, fanfic)
+function CustomFilterMenu:show(menuWidget)
     self.menuWidget = menuWidget
-    self.fanfic = fanfic
 
     self.menuWidget:GoDownInMenu("Select filter", self:refreshMainMenu())
 end
@@ -1416,7 +1416,7 @@ function CustomFilterMenu:executeSearch()
                 self.filter.exclude_additional_tags and table.concat(self.filter.exclude_additional_tags, ",") or "",
             }, ","),
         }
-        local success, ficResults, fetchNextPage = self.fanfic:executeSearch(parameters)
+        local success, ficResults, fetchNextPage = AO3Manager:executeSearch(parameters)
 
         if not success then
             UIManager:show(InfoMessage:new({
@@ -1427,7 +1427,7 @@ function CustomFilterMenu:executeSearch()
         end
 
         -- Show the results in the FanficBrowser
-        self.fanfic:onShowFanficBrowser(
+        AO3Manager:onShowFanficBrowser(
             ficResults,
             fetchNextPage
         )

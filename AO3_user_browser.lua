@@ -6,6 +6,7 @@ local T = FFIUtil.template
 local logger = require("logger")
 local InfoMessage = require("ui/widget/infomessage")
 local MenuStack = require("menu_stack")
+local AO3Manager = require("AO3_manager")
 
 local AO3UserBrowser = {
     Fanfic = nil,
@@ -39,14 +40,10 @@ function AO3UserBrowser:GoUpInMenu()
 end
 
 
-function AO3UserBrowser:show(userData, ui, fanfic)
+function AO3UserBrowser:show(userData)
     self.userData = userData
-    self.ui = ui
-    self.Fanfic = fanfic
 
     self:reloadProfile()
-
-
 end
 
 function AO3UserBrowser:generateMenuTable()
@@ -226,18 +223,20 @@ function AO3UserBrowser:loadPage(title, menu_table)
 end
 
 function AO3UserBrowser:openFanficBrowserForCategory(category, total, fandom_id)
-    local success, works, getNextPage = self.Fanfic:getWorksFromUserPage(self.userData.username, self.userData.pseud, category, fandom_id)
-    if success then
-        works.total =  works.total or total or 0
-        self.Fanfic:onShowFanficBrowser(works, getNextPage)
+    local success, works, getNextPage = AO3Manager:getWorksFromUserPage(self.userData.username, self.userData.pseud, category, fandom_id)
+    if success and works then
+        works.total = works.total or total or 0
+        AO3Manager:onShowFanficBrowser(works, getNextPage)
     else
-        self.ui:showMessageBox("Error", "Failed to fetch works for category: " .. tostring(category))
+        UIManager:show(InfoMessage:new{
+            text = "Error: Failed to fetch works for category: " .. tostring(category),
+        })
     end
 end
 
 function AO3UserBrowser:openUserSeriesList()
-    local success, seriesList = self.Fanfic:getSeriesFromUserPage(self.userData.username, self.userData.pseud)  --
-    if success then
+    local success, seriesList = AO3Manager:getSeriesFromUserPage(self.userData.username, self.userData.pseud)  --
+    if success and seriesList then
         local series_menu_kv = {}
         table.insert(series_menu_kv, {
             "← Back to profile",
@@ -254,12 +253,12 @@ function AO3UserBrowser:openUserSeriesList()
                 series.title,
                 "",
                 callback = function()
-                    local success, seriesWorks, fetchNextPage = self.Fanfic:getWorksFromSeries(series.id)
+                    local success, seriesWorks, fetchNextPage = AO3Manager:getWorksFromSeries(series.id)
                     if success == false then
                         return
                     end
 
-                    self.Fanfic:onShowFanficBrowser(seriesWorks, fetchNextPage)
+                    AO3Manager:onShowFanficBrowser(seriesWorks, fetchNextPage)
                 end,
                 seperator = true,
             })
@@ -296,8 +295,8 @@ function AO3UserBrowser:openUserSeriesList()
 end
 
 function AO3UserBrowser:openUserCollectionsList()
-    local success, collectionsList, getNextPage = self.Fanfic:getCollectionsFromUserPage(self.userData.username)  --
-    if success then
+    local success, collectionsList, getNextPage = AO3Manager:getCollectionsFromUserPage(self.userData.username)  --
+    if success and collectionsList then
         local collections_menu_kv = {}
         table.insert(collections_menu_kv, {
             "← Back to profile",
@@ -314,13 +313,13 @@ function AO3UserBrowser:openUserCollectionsList()
                 collection.title,
                 "",
                 callback = function()
-                    local success, collectionWorks, fetchNextPage = self.Fanfic:getWorksFromCollection(collection.id)
+                    local success, collectionWorks, fetchNextPage = AO3Manager:getWorksFromCollection(collection.id)
                     if success == false then
                         return
                     end
 
                     collectionWorks.total = collection.work_count or 0
-                    self.Fanfic:onShowFanficBrowser(collectionWorks, fetchNextPage)
+                    AO3Manager:onShowFanficBrowser(collectionWorks, fetchNextPage)
                 end,
                 seperator = true,
             })
@@ -353,8 +352,8 @@ function AO3UserBrowser:openUserCollectionsList()
 end
 
 function AO3UserBrowser:openPseudsList()
-    local success, pseuds = self.Fanfic:getPseudsForUser(self.userData.username)
-    if success then
+    local success, pseuds = AO3Manager:getPseudsForUser(self.userData.username)
+    if success and pseuds then
         local pseuds_menu_kv = {}
 
         table.insert(pseuds_menu_kv, {
@@ -371,9 +370,9 @@ function AO3UserBrowser:openPseudsList()
                 T("%1 (%2 works) (%3 recs)", pseud.name, pseud.works_count, pseud.recs_count),
                 "",
                 callback = function()
-                    local success, userData = self.Fanfic:getUserData(self.userData.username, pseud.name)
+                    local success, userData = AO3Manager:getUserData(self.userData.username, pseud.name)
                     if success then
-                        self:show(userData, self.ui, self.Fanfic)
+                        self:show(userData)
                     else
                         UIManager:show(InfoMessage:new({
                             text = T("Failed to fetch data for pseud: '%1'", pseud.name),

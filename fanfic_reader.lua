@@ -10,6 +10,7 @@ local InfoMessage = require("ui/widget/infomessage")
 local InputDialog = require("ui/widget/inputdialog")
 local ButtonDialog = require("ui/widget/buttondialog")
 local MultiInputDialog = require("ui/widget/multiinputdialog")
+local MenuStack = require("menu_stack")
 
 local FFIUtil = require("ffi/util")
 local T = FFIUtil.template
@@ -23,6 +24,9 @@ local FanficReader = {
 }
 
 function FanficReader:show(options)
+
+    MenuStack:closeAllMenus()
+
     self.current_fanfic = options.current_fanfic
 
     if self.is_showing then

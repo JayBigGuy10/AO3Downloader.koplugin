@@ -11,6 +11,7 @@ local _ = require("gettext")
 local FFIUtil = require("ffi/util")
 local T = FFIUtil.template
 local UIManager = require("ui/uimanager")
+local AO3Manager = require("AO3_manager")
 
 local DownloadedFanficsMenu = {}
 
@@ -67,8 +68,7 @@ local function formatFanficTitle(fanfic)
     return T("%1 (%2) %3 by %4", prefix, fanfic.chapters, fanfic.title, fanfic.author)
 end
 
-function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic)
-    self.Fanfic = Fanfic
+function DownloadedFanficsMenu:show(parentMenu, updateFanficCallback)
 
     local function refreshDownloadMenu()
         local downloaded_fanfics = DownloadedFanfics.getAll()
@@ -147,7 +147,13 @@ function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic
                                             DownloadedFanfics.update(fanfic)
 
                                             UIManager:close(dialog)
-                                            self.Fanfic:onOpenFanficReader(fanfic.path, fanfic)
+
+                                            FanficReader:show({
+                                                fanfic_path = fanfic.path,
+                                                current_fanfic = fanfic,
+                                                chapter_opening_at = nil,
+                                            })
+
                                         end,
                                     },
                                 }
@@ -162,7 +168,6 @@ function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic
 
                                             UIManager:close(dialog)
                                             DownloadedFanficsMenu:showFanficChapterSelect(
-                                                ui,
                                                 fanfic,
                                                 parentMenu
                                             )
@@ -207,7 +212,7 @@ function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic
                                                 text = _("View Details"),
                                                 callback = function()
                                                     -- Show detailed information
-                                                    self.Fanfic:onShowFanficBrowser({
+                                                    AO3Manager:onShowFanficBrowser({
                                                             fanfic,
                                                             searchType = "AO3 Work Details"
                                                         },
@@ -417,7 +422,7 @@ function DownloadedFanficsMenu:show(ui, parentMenu, updateFanficCallback, Fanfic
     parentMenu:GoDownInMenu("Downloaded Works by Fandom", download_menu_items)
 end
 
-function DownloadedFanficsMenu:showFanficChapterSelect(ui, fanfic, parentMenu)
+function DownloadedFanficsMenu:showFanficChapterSelect(fanfic, parentMenu)
     if not fanfic.chapter_data then
         return
     end
@@ -428,7 +433,11 @@ function DownloadedFanficsMenu:showFanficChapterSelect(ui, fanfic, parentMenu)
         table.insert(chapter_options, {
             text = (chapter.read and "✓ " or "") .. chapter.name,
             callback = function()
-                self.Fanfic:onOpenFanficReader(fanfic.path, fanfic, idx)
+                FanficReader:show({
+                    fanfic_path = fanfic.path,
+                    current_fanfic = fanfic,
+                    chapter_opening_at = idx,
+                })
             end,
         })
     end

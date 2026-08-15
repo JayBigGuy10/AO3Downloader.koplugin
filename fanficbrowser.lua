@@ -23,6 +23,7 @@ local Screen = Device.screen
 local Geom = require("ui/geometry")
 local GestureRange = require("ui/gesturerange")
 local Blitbuffer = require("ffi/blitbuffer")
+local FanficReader = require("fanfic_reader")
 
 local FanficBrowser = {
     ui = nil,
@@ -576,7 +577,11 @@ function FanficCardPage:onTitleTap(fanfic)
                         text = _("Open"),
                         callback = function()
                             UIManager:close(dialog)
-                            self.Fanfic:onOpenFanficReader(downloaded.path, downloaded)
+                            FanficReader:show({
+                                fanfic_path = downloaded.path,
+                                current_fanfic = downloaded,
+                                chapter_opening_at = nil,
+                            })
                         end,
                     },
                     {
