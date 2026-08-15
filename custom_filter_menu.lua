@@ -1387,21 +1387,15 @@ function CustomFilterMenu:executeSearch()
             ["work_search[language_id]"] = self.filter.language_id or nil,
             ["work_search[date_from]"] = self.filter.date_from or nil,
             ["work_search[date_to]"] = self.filter.date_to or nil,
-            ["work_search[fandom_names]"] = self.filter.fandom_names and table.concat(self.filter.fandom_names, ",")
-                or nil,
+            ["work_search[fandom_names]"] = self.filter.fandom_names and table.concat(self.filter.fandom_names, ",") or nil,
             ["work_search[rating_ids]"] = self.filter.rating or nil,
             ["work_search[archive_warning_ids][]"] = self.filter.warnings or nil,
             ["exclude_work_search[archive_warning_ids][]"] = self.filter.exclude_warnings or nil,
             ["work_search[category_ids][]"] = self.filter.categories or nil,
             ["exclude_work_search[category_ids][]"] = self.filter.exclude_categories or nil,
-            ["work_search[character_names]"] = self.filter.characters and table.concat(self.filter.characters, ",")
-                or nil,
-            ["work_search[relationship_names]"] = self.filter.relationships
-                and table.concat(self.filter.relationships, ",")
-                or nil,
-            ["work_search[freeform_names]"] = self.filter.additional_tags
-                and table.concat(self.filter.additional_tags, ",")
-                or nil,
+            ["work_search[character_names]"] = self.filter.characters and table.concat(self.filter.characters, ",") or nil,
+            ["work_search[relationship_names]"] = self.filter.relationships and table.concat(self.filter.relationships, ",") or nil,
+            ["work_search[freeform_names]"] = self.filter.additional_tags and table.concat(self.filter.additional_tags, ",") or nil,
             ["work_search[hits]"] = self.filter.hits or nil,
             ["work_search[kudos_count]"] = self.filter.kudos or nil,
             ["work_search[comments_count]"] = self.filter.comments or nil,

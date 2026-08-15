@@ -7,6 +7,7 @@ local MenuStack = require("menu_stack")
 local _ = require("gettext")
 local util = require("util")
 local FFIUtil = require("ffi/util")
+local AO3Manager = require("AO3_manager")
 local T = FFIUtil.template
 
 local KeyValuePage = require("ui/widget/keyvaluepage")
@@ -27,8 +28,6 @@ local FanficReader = require("fanfic_reader")
 
 local FanficBrowser = {
     ui = nil,
-    updateFanficCallback = nil,
-    downloadFanficCallback = nil,
     showAuthorInfoCallback = nil,
     searchByTagCallback = nil,
 }
@@ -123,13 +122,10 @@ function FanficCardPage:_populateItems()
     end
 
     -- Nav bar update - identical to KeyValuePage._populateItems
-    if self.pages >= 1 then
-        self.page_info_text:setText(T(_("Page %1 of %2"), self.show_page, self.pages))
-        if self.pages > 1 then
-            self.page_info_text:enable()
-        else
-            self.page_info_text:disableWithoutDimming()
-        end
+    if self.pages > 1 then
+        self.page_info_text:setText(T(_("Work %1 of %2"), self.show_page, self.pages))
+        self.page_info_text:enable()
+
         self.page_info_left_chev:show()
         self.page_info_right_chev:show()
         self.page_info_first_chev:show()
@@ -140,7 +136,10 @@ function FanficCardPage:_populateItems()
         self.page_info_first_chev:enableDisable(self.show_page > 1)
         self.page_info_last_chev:enableDisable(self.show_page < self.pages)
     else
-        self.page_info_text:setText(_("No items"))
+        if self.pages < 1 then
+            self.page_info_text:setText(_("No items"))
+        end
+        
         self.page_info_text:disableWithoutDimming()
         self.page_info_left_chev:hide()
         self.page_info_right_chev:hide()
@@ -565,7 +564,7 @@ function FanficCardPage:onTitleTap(fanfic)
                         callback = function()
                             UIManager:close(dialog)
                             UIManager:scheduleIn(1, function()
-                                self.updateFanficCallback(downloaded)
+                                AO3Manager:UpdateFanfic(downloaded)
                             end)
                             UIManager:show(InfoMessage:new{
                                 text = _("Downloading work may take some time."),
@@ -733,7 +732,7 @@ function FanficBrowser:showDownloadDialog(fanfic)
                     text = "Yes",
                     callback = function()
                         UIManager:scheduleIn(1, function()
-                            self.downloadFanficCallback(fanfic.id)
+                            AO3Manager:DownloadFanfic(fanfic.id)
                         end)
                         UIManager:show(InfoMessage:new({
                             text = _("Downloading work may take some time."),
@@ -776,9 +775,7 @@ end
 --- Main entry point - called by main.lua and fanfic_menu.lua.
 -- searchByTagCallback is optional; when provided, fandom/relationship/character
 -- fields become tappable to trigger a tag search.
-function FanficBrowser:show(ficResults, fetchNextPage, updateFanficCallback, downloadFanficCallback, showAuthorInfoCallback, searchByTagCallback, openSeriesCallback)
-
-    self.downloadFanficCallback = downloadFanficCallback
+function FanficBrowser:show(ficResults, fetchNextPage, showAuthorInfoCallback, searchByTagCallback, openSeriesCallback)
 
     -- Remove the total field so it does not get treated as a fanfic entry.
     local totalFanfics = -1
@@ -803,8 +800,6 @@ function FanficBrowser:show(ficResults, fetchNextPage, updateFanficCallback, dow
         totalFanfics = totalFanfics,
         fetchNextPage = fetchNextPage,
         -- Pass callbacks through so the card page can trigger actions
-        updateFanficCallback = updateFanficCallback,
-        downloadFanficCallback = downloadFanficCallback,
         showAuthorInfoCallback = showAuthorInfoCallback,
         searchByTagCallback = searchByTagCallback,
         openSeriesCallback = openSeriesCallback,

@@ -32,8 +32,6 @@ function AO3Manager:onShowFanficBrowser(ficResults, fetchNextPage)
     FanficBrowser:show(
         ficResults,
         fetchNextPage,
-        function(fanfic) self:UpdateFanfic(fanfic) end,
-        function(fanficId) self:DownloadFanfic(fanficId) end,
         function(author)
             -- Parse pseud from "pseud (username)" format if present
             local username
@@ -273,39 +271,14 @@ function AO3Manager:UpdateFanfic(fanfic, metadataOnly)
 end
 
 function AO3Manager:fetchFanficsByTag(selectedFandom, sortBy)
-    if not NetworkMgr:isConnected() then
-        NetworkMgr:runWhenConnected()
-        return false
-    end
 
-    local currentPage = 1
+    local parameters = {
+        ["work_search[sort_column]"] = sortBy,
+        ["tag_id"] = selectedFandom,
+    }
+    local success, results, fetchNextPage = AO3Manager:executeSearch(parameters)
 
-    -- Define the function to fetch the next page for the selected fandom
-    local function fetchNextPage()
-        currentPage = currentPage + 1
-        local next_page_results =  AO3DownloaderClient:searchByTag(selectedFandom, sortBy, currentPage)
-        if not next_page_results.success then
-            UIManager:show(InfoMessage:new{
-                text = T("Error: %1", next_page_results.error),
-                icon = "notice-warning",
-            })
-        end
-
-        return next_page_results.result_works
-    end
-
-    -- Fetch the first page of results
-    local search_results = AO3DownloaderClient:searchByTag(selectedFandom, sortBy, currentPage)
-
-    if not search_results.success then
-        UIManager:show(InfoMessage:new{
-            text = T("Error: %1", search_results.error),
-            icon = "notice-warning",
-        })
-        return false
-    end
-
-    return true, search_results.result_works, fetchNextPage
+    return success, results, fetchNextPage
 
 end
 
