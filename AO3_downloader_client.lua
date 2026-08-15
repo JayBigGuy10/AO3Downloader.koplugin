@@ -22,6 +22,7 @@ local HTTPQueryHandler = {}
 local encodeHelper = {}
 
 
+-- encodeHelper
 function encodeHelper:urlEncode(str)
     if str then
         str = str:gsub("([^%w%-%.%_%~])", function(c)
@@ -92,6 +93,8 @@ function encodeHelper:generateParametersStringForm(params)
     return table.concat(form_parts, "&")
 end
 
+
+-- AO3DownloaderClient
 function AO3DownloaderClient:requestAO3Token()
     logger.dbg("AO3Downloader.koplugin: Requesting AO3 token...")
     local tokenRequestURL = getAO3URL() .. "/token_dispenser.json"
@@ -1556,7 +1559,6 @@ function AO3WebParser:parseWorkSearchResults(root)
     return works
 end
 
--- AO3WebParser
 function AO3WebParser:parseSeries(root, header)
     local works = {}
     local count = 1
