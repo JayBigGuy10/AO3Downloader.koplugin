@@ -460,8 +460,7 @@ function AO3DownloaderClient:searchByParameters(parameters, page_no)
     local response_result = HTTPQueryHandler:performHTTPRequest(request)
 
     if not response_result.success then
-        return {
-            success = false,
+        return false, {
             error = T("%1/works?commit=Sort+and+Filter&%2", getAO3URL(), queryString)
         }
     end
@@ -469,12 +468,9 @@ function AO3DownloaderClient:searchByParameters(parameters, page_no)
     local html_body = table.concat(response_body)
 
     local root = htmlparser.parse(html_body)
-    local works = AO3WebParser:parseWorkSearchResults(root)
+    local searchResult = AO3WebParser:parseWorkSearchResults(root)
 
-    return {
-        success = true,
-        works = works,
-    }
+    return true, searchResult
 end
 
 function AO3DownloaderClient:searchByTag(tag_name, sort_by, page_no)
@@ -585,8 +581,7 @@ function AO3DownloaderClient:getWorksFromSeries(series_id, page_no)
     local request_result = HTTPQueryHandler:performHTTPRequest(request)
 
     if not request_result.success then
-        return {
-            success = false,
+        return false, {
             error = T("Failed to fetch series works. Status: %1", request_result.status or "unknown error"),
         }
     end
@@ -595,14 +590,12 @@ function AO3DownloaderClient:getWorksFromSeries(series_id, page_no)
 
     local root = htmlparser.parse(html_body)
 
-    local works = AO3WebParser:parseSeries(root, page_no==1)
+    local searchResult = AO3WebParser:parseSeries(root, page_no==1)
 
-    works["searchType"] = "AO3 Series"
+    searchResult.title = "AO3 Series"
+    searchResult.count_suffix = "Works"
 
-    return {
-        success = true,
-        works = works,
-    }
+    return true, searchResult
 end
 
 function AO3DownloaderClient:getWorksFromCollection(collection_id, page_no)
@@ -620,8 +613,7 @@ function AO3DownloaderClient:getWorksFromCollection(collection_id, page_no)
     local request_result = HTTPQueryHandler:performHTTPRequest(request)
 
     if not request_result.success then
-        return {
-            success = false,
+        return false, {
             error = T("Failed to fetch collection works. Status: %1", request_result.status or "unknown error"),
         }
     end
@@ -630,14 +622,12 @@ function AO3DownloaderClient:getWorksFromCollection(collection_id, page_no)
 
     local root = htmlparser.parse(html_body)
 
-    local works = AO3WebParser:parseWorkSearchResults(root)
+    local searchResult = AO3WebParser:parseWorkSearchResults(root)
 
-    works["searchType"] = "AO3 Collection"
+    searchResult.title = "AO3 Collection"
+    searchResult.count_suffix = "Works"
 
-    return {
-        success = true,
-        works = works,
-    }
+    return true, searchResult
 end
 
 function AO3DownloaderClient:getWorksFromUserPage(username, pseud, catagory, fandom_id, page_no)
@@ -679,8 +669,7 @@ function AO3DownloaderClient:getWorksFromUserPage(username, pseud, catagory, fan
     local request_result = HTTPQueryHandler:performHTTPRequest(request)
 
     if not request_result.success then
-        return {
-            success = false,
+        return false, {
             error = T("Failed to fetch user works. Status: %1", request_result.status or "unknown error"),
         }
     end
@@ -689,18 +678,18 @@ function AO3DownloaderClient:getWorksFromUserPage(username, pseud, catagory, fan
 
     local root = htmlparser.parse(html_body)
 
-    local works = nil
+    local searchResult = nil
 
     if catagory == "bookmarks" then
-        works = AO3WebParser:parseUserBookmarks(root)
+        searchResult = AO3WebParser:parseUserBookmarks(root)
     else
-         works = AO3WebParser:parseWorkSearchResults(root)
+        searchResult = AO3WebParser:parseWorkSearchResults(root)
     end
+        
+    searchResult.title = "AO3 Search"
+    searchResult.count_suffix = "Results"
 
-    return {
-        success = true,
-        works = works,
-    }
+    return  true, searchResult
 
 end
 
@@ -744,8 +733,7 @@ function AO3DownloaderClient:getWorksFromAccountHistory(marked_for_later, page_n
     local request_result = HTTPQueryHandler:performHTTPRequest(request)
 
     if not request_result.success then
-        return {
-            success = false,
+        return false, {
             error = T("Failed to fetch account history. Status: %1", request_result.status or "unknown error"),
         }
     end
@@ -754,16 +742,11 @@ function AO3DownloaderClient:getWorksFromAccountHistory(marked_for_later, page_n
 
     local root = htmlparser.parse(html_body)
 
-    local works = nil
+    local searchResult = AO3WebParser:parseAccountHistory(root)
 
-    works = AO3WebParser:parseAccountHistory(root)
+    searchResult.title = marked_for_later and "AO3 Account Marked For Later" or "AO3 Account History"
 
-    works["searchType"] = marked_for_later and "AO3 Account Marked For Later" or "AO3 Account History"
-
-    return {
-        success = true,
-        works = works,
-    }
+    return true, searchResult
 
 end
 
@@ -1517,7 +1500,9 @@ end
 
 -- AO3WebParser
 function AO3WebParser:parseWorkSearchResults(root)
-    local works = {}
+    local searchResult = {
+        works = {}
+    }
     local elements = root:select("li.work")
 
     local count = 1
@@ -1527,12 +1512,11 @@ function AO3WebParser:parseWorkSearchResults(root)
         local resultsText = resultsCountElement:getcontent()
         local totalWorks = resultsText:match("^%s*([%d,]+) Found")
         if totalWorks then
-            totalWorks = tonumber(totalWorks:gsub(",", ""), 10)
-            works["total"] = totalWorks
+            searchResult.count = tonumber(totalWorks:gsub(",", ""), 10)
         end
     end
 
-    if not works["total"] then
+    if not searchResult.count then
         local resultsCountElement = root:select("#main > h2")[1]
         if resultsCountElement then
             local resultsText = resultsCountElement:getcontent()
@@ -1541,8 +1525,7 @@ function AO3WebParser:parseWorkSearchResults(root)
                 totalWorks = resultsText:match("^%s*([%d,]+)%s*Works")
             end
             if totalWorks then
-                totalWorks = totalWorks:gsub(",", "")
-                works["total"] = tonumber(totalWorks)
+                searchResult.count = tonumber(totalWorks:gsub(",", ""),10)
             end
         end
     end
@@ -1551,27 +1534,24 @@ function AO3WebParser:parseWorkSearchResults(root)
     for _, element in ipairs(elements) do
         local work = self:parseWorkElement(element)
         if work then
-            table.insert(works, count, work)
+            table.insert(searchResult.works, count, work)
             count = count + 1
         end
     end
 
-    return works
+    return searchResult
 end
 
 function AO3WebParser:parseSeries(root, header)
-    local works = {}
-    local count = 1
+    local searchResult = {
+        works = {}
+    }
 
     local worksCountElement = root:select("dd.works")[1]
     if worksCountElement then
         local worksCount = worksCountElement:getcontent()
         if worksCount then
-            worksCount = tonumber(worksCount:gsub(",", ""), 10)
-            if header then
-                worksCount = worksCount + 1
-            end
-            works["total"] = worksCount
+            searchResult.count = tonumber(worksCount:gsub(",", ""), 10)
         end
     end
 
@@ -1632,24 +1612,26 @@ function AO3WebParser:parseSeries(root, header)
         series_meta.fandoms = {}
         series_meta.series = {}
 
-        table.insert(works, count, series_meta)
-        count = count + 1
+        searchResult.cover_page = series_meta
     end
 
+    local count = 1
     local elements = root:select("li.work")
     for _, element in ipairs(elements) do
         local work = self:parseWorkElement(element)
         if work then
-            table.insert(works, count, work)
+            table.insert(searchResult.works, count, work)
             count = count + 1
         end
     end
 
-    return works
+    return searchResult
 end
 
 function AO3WebParser:parseUserBookmarks(root)
-    local bookmarks = {}
+    local searchResult = {
+        works = {}
+    }
     local elements = root:select("li.bookmark")
 
     local count = 1
@@ -1662,19 +1644,19 @@ function AO3WebParser:parseUserBookmarks(root)
             work.title = "Deleted Work"
             work.id = nil
             work.is_deleted = true
-            table.insert(bookmarks, count, work)
+            table.insert(searchResult.works, count, work)
             count = count + 1
 
         else
             local work = self:parseWorkElement(element)
             if work then
-                table.insert(bookmarks, count, work)
+                table.insert(searchResult.works, count, work)
                 count = count + 1
             end
         end
     end
 
-    return bookmarks
+    return searchResult
 
 end
 
@@ -1861,7 +1843,9 @@ function AO3WebParser:parseUserCollectionsPage(root)
 end
 
 function AO3WebParser:parseAccountHistory(root)
-    local works = {}
+    local searchResult = {
+        works = {}
+    } 
     local elements = root:select("li.work")
 
     local count = 1
@@ -1869,14 +1853,12 @@ function AO3WebParser:parseAccountHistory(root)
     for _, element in ipairs(elements) do
         local work = self:parseWorkElement(element)
         if work then
-            table.insert(works, count, work)
+            table.insert(searchResult.works, count, work)
             count = count + 1
         end
     end
 
-    works["total"] = -1
-
-    return works
+    return searchResult
 end
 
 function AO3WebParser:parseWorkElement(element)

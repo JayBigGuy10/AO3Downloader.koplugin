@@ -8,7 +8,6 @@ local InfoMessage = require("ui/widget/infomessage")
 local ConfirmBox = require("ui/widget/confirmbox")
 local BD = require("ui/bidi")
 local DownloadedFanfics = require("downloaded_fanfics")
-local FanficBrowser = require("fanficbrowser")
 local FanficReader = require("fanfic_reader")
 local Config = require("fanfic_config")
 local AO3DownloaderClient = require("AO3_downloader_client")
@@ -25,64 +24,6 @@ function AO3Manager:generateFileName(metadata)
         ["%A"] = metadata.author:gsub("%s+", "_"),
     }
     return template:gsub("(%%%a)", replace)
-end
-
-function AO3Manager:onShowFanficBrowser(ficResults, fetchNextPage)
-    logger.dbg("AO3Downloader.koplugin: Showing fanfic browser")
-    FanficBrowser:show(
-        ficResults,
-        fetchNextPage,
-        function(author)
-            -- Parse pseud from "pseud (username)" format if present
-            local username
-            local pseud
-
-            if string.find(author, "%(") and string.find(author, "%)") then
-                username = string.match(author, "%((.-)%)")
-                pseud = string.match(author, "^(.-)%s*%(")
-            else
-                username = author
-                pseud = author
-            end
-            logger.dbg("Opening user browser for author: " .. username .. " pseud: " .. pseud)
-            
-            UIManager:scheduleIn(1, function()
-                self:showUserInfo(username, pseud)
-            end)
-            UIManager:show(InfoMessage:new{
-                text = _("Opening Author: " .. author),
-                timeout = 1,
-            })
-        end,
-        function(tag)
-            -- Search by tag from the card view. Uses "revised_at" (date updated)
-            -- as the default sort because it matches AO3's default tag page order.
-            UIManager:scheduleIn(1, function()
-                local success, tagResults, tagFetchNextPage = self:fetchFanficsByTag(tag, "revised_at")
-                if success then
-                    self:onShowFanficBrowser(tagResults, tagFetchNextPage)
-                end
-            end)
-            UIManager:show(InfoMessage:new{
-                text = _("Searching works by tag: " .. tag),
-                timeout = 1,
-            })
-        end,
-        function(series)
-            -- Search by series
-            UIManager:scheduleIn(1, function()
-                local success, tagResults, seriesFetchNextPage = self:getWorksFromSeries(series.id)
-                if success then
-                    self:onShowFanficBrowser(tagResults, seriesFetchNextPage)
-                end
-            end)
-            UIManager:show(InfoMessage:new{
-                text = _("Opening series: " .. series.title),
-                timeout = 1,
-            })
-        end
-    )
-
 end
 
 function AO3Manager:DownloadFanfic(id)
@@ -276,9 +217,12 @@ function AO3Manager:fetchFanficsByTag(selectedFandom, sortBy)
         ["work_search[sort_column]"] = sortBy,
         ["tag_id"] = selectedFandom,
     }
-    local success, results, fetchNextPage = AO3Manager:executeSearch(parameters)
+    local status, searchResult = AO3Manager:executeSearch(parameters)
 
-    return success, results, fetchNextPage
+    searchResult.title = "AO3 Search"
+    searchResult.count_suffix = "Results"
+
+    return status, searchResult
 
 end
 
@@ -290,32 +234,32 @@ function AO3Manager:getWorksFromAccountHistory(marked_for_later)
 
     local currentPage = 1
 
-    -- Define the function to fetch the next page for the selected fandom
-    local function fetchNextPage()
-        currentPage = currentPage + 1
-        local next_page_results =  AO3DownloaderClient:getWorksFromAccountHistory(marked_for_later, currentPage)
-        if not next_page_results.success then
-            UIManager:show(InfoMessage:new{
-                text = T("Error: %1", next_page_results.error),
-                icon = "notice-warning",
-            })
-        end
-
-        return next_page_results.works
-    end
-
     -- Fetch the first page of results
-    local search_results = AO3DownloaderClient:getWorksFromAccountHistory(marked_for_later, currentPage)
+    local status, searchResult = AO3DownloaderClient:getWorksFromAccountHistory(marked_for_later, currentPage)
 
-    if not search_results.success then
+    if not status then
         UIManager:show(InfoMessage:new{
-            text = T("Error: %1", search_results.error),
+            text = T("Error: %1", searchResult.error),
             icon = "notice-warning",
         })
         return false
     end
 
-    return true, search_results.works, fetchNextPage
+    -- Define the function to fetch the next page for the selected fandom
+    searchResult.fetchNextPage = function()
+        currentPage = currentPage + 1
+        local status, searchResult =  AO3DownloaderClient:getWorksFromAccountHistory(marked_for_later, currentPage)
+        if not status then
+            UIManager:show(InfoMessage:new{
+                text = T("Error: %1", searchResult.error),
+                icon = "notice-warning",
+            })
+        end
+
+        return searchResult.works
+    end
+
+    return true, searchResult
 
 end
 
@@ -324,42 +268,42 @@ function AO3Manager:executeSearch(parameters)
         NetworkMgr:runWhenConnected()
         return false
     end
-
+    
     local currentPage = 1
 
-    -- Define the function to fetch the next page for the search parameters
-    local function fetchNextPage()
-        currentPage = currentPage + 1
-        local request_result = AO3DownloaderClient:searchByParameters(parameters, currentPage)
+    -- Fetch the first page of results
+    local status, searchResult = AO3DownloaderClient:searchByParameters(parameters, currentPage)
 
-        if not request_result.success then
+    if not status then
+        UIManager:show(InfoMessage:new{
+            text = _("Error: ") .. (searchResult.error or "Unknown error"),
+        })
+        return false
+    end
+
+    -- Define the function to fetch the next page for the search parameters
+    searchResult.fetchNextPage = function()
+        currentPage = currentPage + 1
+        local status, searchResult = AO3DownloaderClient:searchByParameters(parameters, currentPage)
+
+        if not status then
             UIManager:show(InfoMessage:new{
-                text = _("Error: ") .. (request_result.error or "Unknown error"),
+                text = _("Error: ") .. (searchResult.error or "Unknown error"),
             })
             currentPage = currentPage - 1
             return false
         end
 
         -- no more works to fetch
-        if #request_result.works == 0 then
+        if #searchResult.works == 0 then
             currentPage = currentPage - 1
             return {}
         end
 
-        return request_result.works
+        return searchResult.works
     end
 
-    -- Fetch the first page of results
-    local request_result = AO3DownloaderClient:searchByParameters(parameters, currentPage)
-
-    if not request_result.success then
-        UIManager:show(InfoMessage:new{
-            text = _("Error: ") .. (request_result.error or "Unknown error"),
-        })
-        return false
-    end
-
-    return true, request_result.works, fetchNextPage
+    return true, searchResult
 end
 
 function AO3Manager:searchForUsers(query)
@@ -436,37 +380,37 @@ function AO3Manager:getWorksFromUserPage(username, pseud, category, fandom_id)
         NetworkMgr:runWhenConnected()
         return false, {}
     end
-    local works_result = AO3DownloaderClient:getWorksFromUserPage(username, pseud, category, fandom_id)
-    if not works_result.success then
+    local status, searchResult = AO3DownloaderClient:getWorksFromUserPage(username, pseud, category, fandom_id)
+    if not status then
         UIManager:show(InfoMessage:new{
-            text = "Error: Failed to fetch works from user page: " .. (works_result.error or "Unknown error"),
+            text = "Error: Failed to fetch works from user page: " .. (searchResult.error or "Unknown error"),
         })
         return false
     end
 
     local currentPage = 1
 
-    local function getNextPage()
+    searchResult.fetchNextPage = function()
         currentPage = currentPage + 1
-        local next_page_result = AO3DownloaderClient:getWorksFromUserPage(username, pseud, category, fandom_id, currentPage)
-        if not next_page_result.success then
+        local status, searchResult = AO3DownloaderClient:getWorksFromUserPage(username, pseud, category, fandom_id, currentPage)
+        if not status then
             currentPage = currentPage - 1
             UIManager:show(InfoMessage:new{
-                text = "Error: Failed to fetch works from user page: " .. (next_page_result.error or "Unknown error"),
+                text = "Error: Failed to fetch works from user page: " .. (searchResult.error or "Unknown error"),
             })
             return {}
         end
 
         -- no more works to fetch
-        if #next_page_result.works == 0 then
+        if #searchResult.works == 0 then
             currentPage = currentPage - 1
             return {}
         end
 
-        return  next_page_result.works
+        return searchResult.works
     end
 
-    return true, works_result.works, getNextPage
+    return true, searchResult
 
 end
 
@@ -547,38 +491,38 @@ function AO3Manager:getWorksFromSeries(series_id)
         NetworkMgr:runWhenConnected()
         return false, {}
     end
-    local works_result = AO3DownloaderClient:getWorksFromSeries(series_id)
-    if not works_result.success then
+    local status, searchResult = AO3DownloaderClient:getWorksFromSeries(series_id)
+    if not status then
         UIManager:show(InfoMessage:new{
-            text = "Error: Failed to fetch works from series: " .. (works_result.error or "Unknown error"),
+            text = "Error: Failed to fetch works from series: " .. (searchResult.error or "Unknown error"),
         })
-        return false
+        return false, {}
     end
 
     local currentpage = 1
 
-    local function fetchNextPage()
+    searchResult.fetchNextPage = function()
         currentpage = currentpage + 1
-        local next_page_result = AO3DownloaderClient:getWorksFromSeries(series_id, currentpage)
-        if not next_page_result.success then
+        local status, searchResult = AO3DownloaderClient:getWorksFromSeries(series_id, currentpage)
+        if not status then
             currentpage = currentpage - 1
             UIManager:show(InfoMessage:new{
-                text = "Error: Failed to fetch works from series: " .. (next_page_result.error or "Unknown error"),
+                text = "Error: Failed to fetch works from series: " .. (searchResult.error or "Unknown error"),
             })
             return {}
         end
 
         -- no more works to fetch
-        if #next_page_result.works == 0 then
+        if #searchResult.works == 0 then
             currentpage = currentpage - 1
             return {}
         end
 
-        return next_page_result.works
+        return searchResult.works
 
     end
 
-    return true, works_result.works, fetchNextPage
+    return true, searchResult
 
 end
 
@@ -587,38 +531,38 @@ function AO3Manager:getWorksFromCollection(collection_id)
         NetworkMgr:runWhenConnected()
         return false, {}
     end
-    local works_result = AO3DownloaderClient:getWorksFromCollection(collection_id)
-    if not works_result.success then
+    local status, searchResult = AO3DownloaderClient:getWorksFromCollection(collection_id)
+    if not status then
         UIManager:show(InfoMessage:new{
-            text = "Error: Failed to fetch works from collection: " .. (works_result.error or "Unknown error"),
+            text = "Error: Failed to fetch works from collection: " .. (searchResult.error or "Unknown error"),
         })
         return false
     end
 
     local currentpage = 1
 
-    local function fetchNextPage()
+    searchResult.fetchNextPage = function()
         currentpage = currentpage + 1
-        local next_page_result = AO3DownloaderClient:getWorksFromCollection(collection_id, currentpage)
-        if not next_page_result.success then
+        local status, searchResult = AO3DownloaderClient:getWorksFromCollection(collection_id, currentpage)
+        if not status then
             currentpage = currentpage - 1
             UIManager:show(InfoMessage:new{
-                text = "Error: Failed to fetch works from collection: " .. (next_page_result.error or "Unknown error"),
+                text = "Error: Failed to fetch works from collection: " .. (searchResult.error or "Unknown error"),
             })
             return {}
         end
 
         -- no more works to fetch
-        if #next_page_result.works == 0 then
+        if #searchResult.works == 0 then
             currentpage = currentpage - 1
             return {}
         end
 
-        return  next_page_result.works
+        return  searchResult.works
 
     end
 
-    return true, works_result.works, fetchNextPage
+    return true, searchResult
 
 end
 

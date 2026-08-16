@@ -598,15 +598,12 @@ function FanficMenu:onBrowseByTag(selectedTag)
             text = option.text,
             callback = function()
                 UIManager:scheduleIn(1, function()
-                    local success, ficResults, fetchNextPage = AO3Manager:fetchFanficsByTag(selectedTag, option.value)
-                    if not success then
+                    local status, searchResult = AO3Manager:fetchFanficsByTag(selectedTag, option.value)
+                    if not status then
                         return
                     end
 
-                    AO3Manager:onShowFanficBrowser(
-                        ficResults,
-                        fetchNextPage
-                    )
+                    FanficBrowser:show(searchResult)
                 end)
                 UIManager:show(InfoMessage:new({
                     text = _("Downloading works data may take some time…"),
@@ -717,15 +714,12 @@ end
 
 function FanficMenu:onSelectAccountHistory(marked_for_later)
     UIManager:scheduleIn(1, function()
-        local success, ficResults, fetchNextPage = AO3Manager:getWorksFromAccountHistory(marked_for_later)
-        if not success then
+        local status, searchResult = AO3Manager:getWorksFromAccountHistory(marked_for_later)
+        if not status then
             return
         end
 
-        AO3Manager:onShowFanficBrowser(
-            ficResults,
-            fetchNextPage
-        )
+        FanficBrowser:show(searchResult)
     end)
     UIManager:show(InfoMessage:new({
         text = _("Downloading works data may take some time…"),

@@ -1410,9 +1410,9 @@ function CustomFilterMenu:executeSearch()
                 self.filter.exclude_additional_tags and table.concat(self.filter.exclude_additional_tags, ",") or "",
             }, ","),
         }
-        local success, ficResults, fetchNextPage = AO3Manager:executeSearch(parameters)
+        local status, searchResult = AO3Manager:executeSearch(parameters)
 
-        if not success then
+        if not status then
             UIManager:show(InfoMessage:new({
                 text = _("Failed to fetch results for the custom filter."),
                 timeout = 2,
@@ -1421,10 +1421,7 @@ function CustomFilterMenu:executeSearch()
         end
 
         -- Show the results in the FanficBrowser
-        AO3Manager:onShowFanficBrowser(
-            ficResults,
-            fetchNextPage
-        )
+        FanficBrowser:show(searchResult)
     end)
 
     UIManager:show(InfoMessage:new({

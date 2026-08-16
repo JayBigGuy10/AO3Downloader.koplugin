@@ -212,11 +212,10 @@ function DownloadedFanficsMenu:show(parentMenu, updateFanficCallback)
                                                 text = _("View Details"),
                                                 callback = function()
                                                     -- Show detailed information
-                                                    AO3Manager:onShowFanficBrowser({
-                                                            fanfic,
-                                                            searchType = "AO3 Work Details"
-                                                        },
-                                                        nil)
+                                                    FanficBrowser:show({
+                                                        title = "AO3 Work Details",
+                                                        works = {fanfic}
+                                                    })
                                                 end,
                                             },
                                         },

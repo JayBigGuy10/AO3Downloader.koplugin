@@ -17,6 +17,7 @@ local InputContainer = require("ui/widget/container/inputcontainer")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local LineWidget = require("ui/widget/linewidget")
+local Button = require("ui/widget/button")
 local Size = require("ui/size")
 local Font = require("ui/font")
 local Device = require("device")
@@ -26,11 +27,7 @@ local GestureRange = require("ui/gesturerange")
 local Blitbuffer = require("ffi/blitbuffer")
 local FanficReader = require("fanfic_reader")
 
-local FanficBrowser = {
-    ui = nil,
-    showAuthorInfoCallback = nil,
-    searchByTagCallback = nil,
-}
+local FanficBrowser = {}
 
 -- Split a comma-separated string into a table, or return the table as-is.
 -- Needed because AO3 API sometimes returns strings instead of arrays.
@@ -66,13 +63,31 @@ end
 local FanficCardPage = KeyValuePage:extend{}
 
 function FanficCardPage:init()
-    -- Build a dummy kv_pairs array so the parent's pagination math works.
-    -- Each entry maps to one fanfic; we override _populateItems to render
-    -- card content instead of KeyValueItem rows.
+
+    self.page_info_text = Button:new{
+        text = "",
+        hold_input = {
+            title = _("Enter page number"),
+            input_type = "number",
+            hint_func = function()
+                return T("(%1 - %2)", (self.searchResult.cover_page and 0 or 1), self.pages - (self.searchResult.cover_page and 1 or 0))
+            end,
+            callback = function(input)
+                local page = tonumber(input) + (self.searchResult.cover_page and 1 or 0)
+                if page and page >= 1 and page <= self.pages then
+                    self:goToPage(page)
+                end
+            end,
+            ok_text = _("Go to page"),
+        },
+        call_hold_input_on_tap = true,
+        bordersize = 0,
+        text_font_face = "pgfont",
+        text_font_bold = false,
+    }
+
+    -- Build a dummy kv_pairs array for the parent
     self.kv_pairs = {}
-    for i = 1, #self.fanfics do
-        table.insert(self.kv_pairs, {tostring(i), ""})
-    end
 
     -- Prevent the parent's _populateItems call during init from doing real
     -- work, since items_per_page and pages haven't been corrected yet.
@@ -82,7 +97,10 @@ function FanficCardPage:init()
 
     -- One fanfic per page instead of the parent's multi-row layout.
     self.items_per_page = 1
-    self.pages = #self.fanfics
+    self.pages = #self.fanfics + (self.searchResult.cover_page and 1 or 0)
+    if self.searchResult.cover_page then
+        self.fanfics[0] = self.searchResult.cover_page
+    end
 
     -- The parent init computes available_height as a local. Recompute it
     -- here so buildCard knows how much vertical space the content area has.
@@ -99,14 +117,13 @@ function FanficCardPage:_populateItems()
     if not self._card_init_done then return end
 
     -- Fetch the next AO3 page when arriving at the last loaded fanfic, but not if we have already loaded all items from the search
-    if self.show_page == self.pages and self.fetchNextPage and self.show_page ~= self.totalFanfics then
+    if self.show_page == self.pages and self.fetchNextPage and self.show_page ~= self.totalFanfics + (self.searchResult.cover_page and 1 or 0) then
         local new_fics = self.fetchNextPage()
         if new_fics and #new_fics > 0 then
             for _, fic in ipairs(new_fics) do
                 table.insert(self.fanfics, fic)
-                table.insert(self.kv_pairs, {tostring(#self.fanfics), ""})
             end
-            self.pages = #self.fanfics
+            self.pages = #self.fanfics + (self.searchResult.cover_page and 1 or 0)
         end
     end
 
@@ -115,7 +132,7 @@ function FanficCardPage:_populateItems()
     self.return_button:resetLayout()
     self.main_content:clear()
 
-    local fanfic = self.fanfics[self.show_page]
+    local fanfic = self.fanfics[self.show_page - (self.searchResult.cover_page and 1 or 0)]
     if fanfic then
         local card = self:buildCard(fanfic)
         table.insert(self.main_content, card)
@@ -123,7 +140,12 @@ function FanficCardPage:_populateItems()
 
     -- Nav bar update - identical to KeyValuePage._populateItems
     if self.pages > 1 then
-        self.page_info_text:setText(T(_("Work %1 of %2"), self.show_page, self.pages))
+        if self.searchResult.cover_page and self.show_page == 1 then
+            self.page_info_text:setText("Description")
+        else
+            self.page_info_text:setText(T(_("Work %1 of %2"), self.show_page - (self.searchResult.cover_page and 1 or 0), self.pages - (self.searchResult.cover_page and 1 or 0)))
+        end
+        
         self.page_info_text:enable()
 
         self.page_info_left_chev:show()
@@ -775,34 +797,60 @@ end
 --- Main entry point - called by main.lua and fanfic_menu.lua.
 -- searchByTagCallback is optional; when provided, fandom/relationship/character
 -- fields become tappable to trigger a tag search.
-function FanficBrowser:show(ficResults, fetchNextPage, showAuthorInfoCallback, searchByTagCallback, openSeriesCallback)
-
-    -- Remove the total field so it does not get treated as a fanfic entry.
-    local totalFanfics = -1
+function FanficBrowser:show(searchResult)
     
-    if ficResults.total then
-        totalFanfics = ficResults.total
-        ficResults.total = nil
-    end
-    
-
-    local title = "AO3 Search Results"
-    if ficResults.searchType then
-        title = ficResults.searchType
-        ficResults.searchType = nil
-    end
-
-    title = title .. (totalFanfics > -1 and (" | " .. ((title == "AO3 Series") and (totalFanfics-1 .. " Works") or (totalFanfics .. " Found"))) or "")
+    local title = (searchResult.title or "AO3 Works") .. (searchResult.count and (" | " .. searchResult.count .." " .. searchResult.count_suffix) or "")
 
     local browse_window = FanficCardPage:new{
         title = title,
-        fanfics = ficResults,
-        totalFanfics = totalFanfics,
-        fetchNextPage = fetchNextPage,
-        -- Pass callbacks through so the card page can trigger actions
-        showAuthorInfoCallback = showAuthorInfoCallback,
-        searchByTagCallback = searchByTagCallback,
-        openSeriesCallback = openSeriesCallback,
+        fanfics = searchResult.works,
+        totalFanfics = searchResult.count,
+        fetchNextPage = searchResult.fetchNextPage,
+        searchResult = searchResult,
+        showAuthorInfoCallback = function(author)
+            -- Parse pseud from "pseud (username)" format if present
+            local username = author
+            local pseud = author
+            if string.find(author, "%(") and string.find(author, "%)") then
+                username = string.match(author, "%((.-)%)")
+                pseud = string.match(author, "^(.-)%s*%(")
+            end
+            
+            UIManager:scheduleIn(1, function()
+                AO3Manager:showUserInfo(username, pseud)
+            end)
+            UIManager:show(InfoMessage:new{
+                text = _("Opening Author: " .. author),
+                timeout = 1,
+            })
+        end,
+        searchByTagCallback = function(tag)
+            -- Search by tag from the card view. Uses "revised_at" (date updated)
+            -- as the default sort because it matches AO3's default tag page order.
+            UIManager:scheduleIn(1, function()
+                local status, searchResult = AO3Manager:fetchFanficsByTag(tag, "revised_at")
+                if status then
+                    self:show(searchResult)
+                end
+            end)
+            UIManager:show(InfoMessage:new{
+                text = _("Searching works by tag: " .. tag),
+                timeout = 1,
+            })
+        end,
+        openSeriesCallback = function(series)
+            -- Search by series
+            UIManager:scheduleIn(1, function()
+                local status, searchResult = AO3Manager:getWorksFromSeries(series.id)
+                if status then
+                    FanficBrowser:show(searchResult)
+                end
+            end)
+            UIManager:show(InfoMessage:new{
+                text = _("Opening series: " .. series.title),
+                timeout = 1,
+            })
+        end
     }
 
     -- Assigned after construction so the closure captures the populated

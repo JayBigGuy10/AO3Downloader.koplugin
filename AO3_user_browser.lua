@@ -7,6 +7,7 @@ local logger = require("logger")
 local InfoMessage = require("ui/widget/infomessage")
 local MenuStack = require("menu_stack")
 local AO3Manager = require("AO3_manager")
+local FanficBrowser = require("fanficbrowser")
 
 local AO3UserBrowser = {
     Fanfic = nil,
@@ -223,10 +224,9 @@ function AO3UserBrowser:loadPage(title, menu_table)
 end
 
 function AO3UserBrowser:openFanficBrowserForCategory(category, total, fandom_id)
-    local success, works, getNextPage = AO3Manager:getWorksFromUserPage(self.userData.username, self.userData.pseud, category, fandom_id)
-    if success and works then
-        works.total = works.total or total or 0
-        AO3Manager:onShowFanficBrowser(works, getNextPage)
+    local status, searchResult = AO3Manager:getWorksFromUserPage(self.userData.username, self.userData.pseud, category, fandom_id)
+    if status then
+        FanficBrowser:show(searchResult)
     else
         UIManager:show(InfoMessage:new{
             text = "Error: Failed to fetch works for category: " .. tostring(category),
@@ -253,12 +253,12 @@ function AO3UserBrowser:openUserSeriesList()
                 series.title,
                 "",
                 callback = function()
-                    local success, seriesWorks, fetchNextPage = AO3Manager:getWorksFromSeries(series.id)
-                    if success == false then
+                    local status, searchResult = AO3Manager:getWorksFromSeries(series.id)
+                    if not status then
                         return
                     end
 
-                    AO3Manager:onShowFanficBrowser(seriesWorks, fetchNextPage)
+                    FanficBrowser:show(searchResult)
                 end,
                 seperator = true,
             })
@@ -313,13 +313,12 @@ function AO3UserBrowser:openUserCollectionsList()
                 collection.title,
                 "",
                 callback = function()
-                    local success, collectionWorks, fetchNextPage = AO3Manager:getWorksFromCollection(collection.id)
-                    if success == false then
+                    local status, searchResult = AO3Manager:getWorksFromCollection(collection.id)
+                    if not status then
                         return
                     end
 
-                    collectionWorks.total = collection.work_count or 0
-                    AO3Manager:onShowFanficBrowser(collectionWorks, fetchNextPage)
+                    FanficBrowser:show(searchResult)
                 end,
                 seperator = true,
             })
