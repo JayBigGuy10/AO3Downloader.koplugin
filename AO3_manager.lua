@@ -213,11 +213,13 @@ end
 
 function AO3Manager:fetchFanficsByTag(selectedFandom, sortBy)
 
-    local parameters = {
-        ["work_search[sort_column]"] = sortBy,
-        ["tag_id"] = selectedFandom,
+    local filter = {
+        sort_by = sortBy,
+        main_tag = selectedFandom,
     }
-    local status, searchResult = AO3Manager:executeSearch(parameters)
+    local status, searchResult = AO3Manager:executeSearch(filter)
+
+    searchResult.filter = filter
 
     searchResult.title = "AO3 Search"
     searchResult.count_suffix = "Results"
@@ -263,11 +265,43 @@ function AO3Manager:getWorksFromAccountHistory(marked_for_later)
 
 end
 
-function AO3Manager:executeSearch(parameters)
+function AO3Manager:executeSearch(filter)
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
-        return false
+        return false, {}
     end
+
+    local parameters = {
+        ["work_search[complete]"] = filter.completion_status or nil,
+        ["work_search[crossover]"] = filter.crossovers or nil,
+        ["work_search[single_chapter]"] = filter.single_chapter or nil,
+        ["work_search[word_count]"] = filter.word_count or nil,
+        ["work_search[language_id]"] = filter.language_id or nil,
+        ["work_search[date_from]"] = filter.date_from or nil,
+        ["work_search[date_to]"] = filter.date_to or nil,
+        ["work_search[fandom_names]"] = filter.fandom_names and table.concat(filter.fandom_names, ",") or nil,
+        ["work_search[rating_ids]"] = filter.rating or nil,
+        ["work_search[archive_warning_ids][]"] = filter.warnings or nil,
+        ["exclude_work_search[archive_warning_ids][]"] = filter.exclude_warnings or nil,
+        ["work_search[category_ids][]"] = filter.categories or nil,
+        ["exclude_work_search[category_ids][]"] = filter.exclude_categories or nil,
+        ["work_search[character_names]"] = filter.characters and table.concat(filter.characters, ",") or nil,
+        ["work_search[relationship_names]"] = filter.relationships and table.concat(filter.relationships, ",") or nil,
+        ["work_search[freeform_names]"] = filter.additional_tags and table.concat(filter.additional_tags, ",") or nil,
+        ["work_search[hits]"] = filter.hits or nil,
+        ["work_search[kudos_count]"] = filter.kudos or nil,
+        ["work_search[comments_count]"] = filter.comments or nil,
+        ["work_search[bookmarks_count]"] = filter.bookmarks or nil,
+        ["work_search[sort_column]"] = filter.sort_by or nil,
+        ["work_search[sort_direction]"] = filter.sort_direction or nil,
+        ["tag_id"] = filter.main_tag or nil,
+        ["work_search[excluded_tag_names]"] = table.concat({
+            filter.exclude_fandom_names and table.concat(filter.exclude_fandom_names, ",") or "",
+            filter.exclude_characters and table.concat(filter.exclude_characters, ",") or "",
+            filter.exclude_relationships and table.concat(filter.exclude_relationships, ",") or "",
+            filter.exclude_additional_tags and table.concat(filter.exclude_additional_tags, ",") or "",
+        }, ","),
+    }
     
     local currentPage = 1
 
@@ -278,7 +312,7 @@ function AO3Manager:executeSearch(parameters)
         UIManager:show(InfoMessage:new{
             text = _("Error: ") .. (searchResult.error or "Unknown error"),
         })
-        return false
+        return false, {}
     end
 
     -- Define the function to fetch the next page for the search parameters

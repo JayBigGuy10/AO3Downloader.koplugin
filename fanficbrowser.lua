@@ -8,6 +8,7 @@ local _ = require("gettext")
 local util = require("util")
 local FFIUtil = require("ffi/util")
 local AO3Manager = require("AO3_manager")
+local CustomFilterEditor = require("custom_filter_editor")
 local T = FFIUtil.template
 
 local KeyValuePage = require("ui/widget/keyvaluepage")
@@ -85,6 +86,13 @@ function FanficCardPage:init()
         text_font_face = "pgfont",
         text_font_bold = false,
     }
+
+    if self.searchResult.filter then
+        self.title_bar_left_icon = "../plugins/AO3Downloader.koplugin/filter-solid-full"
+        self.title_bar_left_icon_tap_callback = function ()
+            CustomFilterEditor:show(self.searchResult, function() self:update() end)
+        end
+    end
 
     -- Build a dummy kv_pairs array for the parent
     self.kv_pairs = {}
@@ -172,6 +180,24 @@ function FanficCardPage:_populateItems()
     UIManager:setDirty(self, function()
         return "ui", self.dimen
     end)
+end
+
+function FanficCardPage:update()
+    local status, searchResult = AO3Manager:executeSearch(self.searchResult.filter)
+    
+    searchResult.filter = self.searchResult.filter
+    searchResult.count_suffix = self.searchResult.count_suffix
+    if status then
+        self.searchResult = searchResult
+        self.title = (searchResult.title or "AO3 Works") .. (searchResult.count and (" | " .. searchResult.count .." " .. searchResult.count_suffix) or "")
+        self.fanfics = searchResult.works
+        self.totalFanfics = searchResult.count
+        self.fetchNextPage = searchResult.fetchNextPage
+        self:init()
+        self:_populateItems()
+    end
+
+    return searchResult
 end
 
 -- Wrap a widget in an InputContainer that fires callback on tap.
