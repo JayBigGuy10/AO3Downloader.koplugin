@@ -473,48 +473,6 @@ function AO3DownloaderClient:searchByParameters(parameters, page_no)
     return true, searchResult
 end
 
-function AO3DownloaderClient:searchByTag(tag_name, sort_by, page_no)
-    local page = page_no or 1
-    logger.dbg("AO3Downloader.koplugin: Executing work search by tag: " .. tostring(tag_name) .. ", page no: " .. tostring(page_no))
-    local sort_column = sort_by or "revised_at"
-
-    local encoded_tag_name = tag_name
-        :gsub("/", "*s*")
-        :gsub("&", "*a*")
-        :gsub("%.", "*d*")
-
-    encoded_tag_name = encodeHelper:urlEncode(encoded_tag_name)
-
-    local AO3URL = Config:readSetting("AO3_domain")
-    local url = T("%1/tags/%2/works?page=%3&work_search[sort_column]=%4", AO3URL, encoded_tag_name, page, sort_column)
-
-    local response_body = {}
-    local request = {
-        url = url,
-        method = "GET",
-        sink = ltn12.sink.table(response_body),
-    }
-
-    local request_result = HTTPQueryHandler:performHTTPRequest(request)
-
-    if not request_result.success then
-        return {
-            success = false,
-            error = T("Search request failed. Status: %1", request_result.status or "unknown error"),
-        }
-    end
-
-    local html_body = table.concat(response_body)
-
-    local root = htmlparser.parse(html_body)
-    local works = AO3WebParser:parseWorkSearchResults(root)
-
-    return {
-        success = true,
-        result_works = works,
-    }
-end
-
 function AO3DownloaderClient:searchForTags(search_query, tag_type)
     logger.dbg("AO3Downloader.koplugin: Executing tag search for query: " .. tostring(search_query) .. ", tag type: " .. tostring(tag_type))
     if not search_query or search_query == "" then
