@@ -125,7 +125,7 @@ function FanficCardPage:_populateItems()
     if not self._card_init_done then return end
 
     -- Fetch the next AO3 page when arriving at the last loaded fanfic, but not if we have already loaded all items from the search
-    if self.show_page == self.pages and self.fetchNextPage and self.show_page ~= self.totalFanfics + (self.searchResult.cover_page and 1 or 0) then
+    if self.show_page == self.pages and self.fetchNextPage and self.show_page ~= (self.totalFanfics and self.totalFanfics + (self.searchResult.cover_page and 1 or 0) or nil) then
         local new_fics = self.fetchNextPage()
         if new_fics and #new_fics > 0 then
             for _, fic in ipairs(new_fics) do
