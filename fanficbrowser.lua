@@ -90,7 +90,7 @@ function FanficCardPage:init()
     if self.searchResult.filter then
         self.title_bar_left_icon = "../plugins/AO3Downloader.koplugin/filter-solid-full"
         self.title_bar_left_icon_tap_callback = function ()
-            CustomFilterEditor:show(self.searchResult, function() self:update() end)
+            CustomFilterEditor:show(self.searchResult.filter, function(filter) self:update(filter) end)
         end
     end
 
@@ -182,10 +182,11 @@ function FanficCardPage:_populateItems()
     end)
 end
 
-function FanficCardPage:update()
-    local status, searchResult = AO3Manager:executeSearch(self.searchResult.filter)
-    
-    searchResult.filter = self.searchResult.filter
+function FanficCardPage:update(filter)
+
+    local status, searchResult = AO3Manager:executeSearch(filter)
+
+    searchResult.filter = filter
     searchResult.count_suffix = self.searchResult.count_suffix
     if status then
         self.searchResult = searchResult
@@ -193,6 +194,7 @@ function FanficCardPage:update()
         self.fanfics = searchResult.works
         self.totalFanfics = searchResult.count
         self.fetchNextPage = searchResult.fetchNextPage
+        self.show_page = 1
         self:init()
         self:_populateItems()
     end

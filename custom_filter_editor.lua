@@ -453,9 +453,9 @@ function CustomFilterEditor:singleTagSearchSelection(title, tagSearchResults, se
     self.menuWidget:GoDownInMenu(title, menu_items)
 end
 
-function CustomFilterEditor:show(searchResult, searchCallback)
+function CustomFilterEditor:show(filter, searchCallback)
 
-    self.filter = deepcopy(searchResult.filter)
+    self.filter = deepcopy(filter)
 
     local filterMenuOptions = {
         {
@@ -527,9 +527,8 @@ function CustomFilterEditor:show(searchResult, searchCallback)
         {
             text = "\u{f002} Execute Search",
             callback = function()
-                -- self:executeSearch()
-                searchResult.filter = self.filter
-                searchCallback()
+                searchCallback(self.filter)
+                UIManager:close(self.menuWidget)
             end,
         },
     }
