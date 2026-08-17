@@ -1225,32 +1225,4 @@ function CustomFilterEditor:selectSortBy()
     self:selectionWidget(title, options, setting)
 end
 
--- Execute the search with the crafted filter
-function CustomFilterEditor:executeSearch()
-    if not self.filter.main_tag then
-        UIManager:show(InfoMessage:new({
-            text = _("Main tag is required"),
-        }))
-        return
-    end
-    UIManager:scheduleIn(1, function()
-
-        local status, searchResult = AO3Manager:executeSearch(self.filter)
-
-        if not status then
-            UIManager:show(InfoMessage:new({
-                text = _("Failed to fetch results for the custom filter."),
-                timeout = 2,
-            }))
-            return
-        end
-
-    end)
-
-    UIManager:show(InfoMessage:new({
-        text = _("Searching with custom filter..."),
-        timeout = 1,
-    }))
-end
-
 return CustomFilterEditor

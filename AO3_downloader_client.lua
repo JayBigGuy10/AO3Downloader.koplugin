@@ -496,8 +496,10 @@ function AO3DownloaderClient:searchByFilter(filter, page_no)
             ["bookmark_search[with_notes]"] = filter.with_notes or nil,
             ["bookmark_search[rec]"] = filter.rec or nil,
         }
+    else
+        return false, {error = "Invalid filter search type"}
     end
-    if filter.tag_id then
+    if filter.main_tag then
         parameters["tag_id"] = filter.main_tag or nil
     elseif filter.user_id then
         parameters["user_id"] = filter.user_id
@@ -546,7 +548,7 @@ function AO3DownloaderClient:searchByFilter(filter, page_no)
 
     local root = htmlparser.parse(html_body)
 
-    local searchResult
+    local searchResult = {}
     if filter.type == "bookmarks" then
         searchResult = AO3WebParser:parseUserBookmarks(root)
     elseif filter.type == "works" then
@@ -668,24 +670,36 @@ function AO3DownloaderClient:getWorksFromCollection(collection_id, page_no)
 
     local searchResult = AO3WebParser:parseWorkSearchResults(root)
 
+    if page_no == 1 then
+        local meta_response_body = {}
+        local meta_request = {
+            url = T("%1/collections/%2/profile", getAO3URL(), collection_id),
+            method = "GET",
+            sink = ltn12.sink.table(meta_response_body),
+        }
+        local meta_request_result = HTTPQueryHandler:performHTTPRequest(meta_request)
+        if not meta_request_result.success then
+            return false, {
+                error = T("Failed to fetch collection metadata. Status: %1", meta_request_result.status or "unknown error"),
+            }
+        end
+        local meta_root = htmlparser.parse(table.concat(meta_response_body))
+        searchResult.cover_page = AO3WebParser:parseCollectionMeta(meta_root)
+    end
+
     searchResult.title = "AO3 Collection"
     searchResult.count_suffix = "Works"
 
     return true, searchResult
 end
 
-function AO3DownloaderClient:getWorksFromUserPage(username, pseud, catagory, fandom_id, page_no)
-    local url
-    if catagory == "gifts" then
-        url = T("%1/users/%2/gifts", getAO3URL(), username)
-    else
-        url = T("%1/users/%2/pseuds/%3/%4", getAO3URL(), username, pseud, catagory)
-    end
+function AO3DownloaderClient:getWorksFromUserGifts(username, page_no)
+    local url = T("%1/users/%2/gifts", getAO3URL(), username)
 
     page_no = page_no or 1
 
-    logger.dbg("AO3Downloader.koplugin: Fetching works from user page. Username: " .. tostring(username) .. ", category: " .. tostring(catagory) .. (fandom_id and (", fandom ID: " .. tostring(fandom_id)) or "") .. ", page no: " .. tostring(page_no))
-    local parameters = {["fandom_id"] = fandom_id, ["page"] = page_no}
+    logger.dbg("AO3Downloader.koplugin: Fetching works from user gifts page. Username: " .. tostring(username) .. ", page no: " .. tostring(page_no))
+    local parameters = {["page"] = page_no}
 
     local parameter_string = table.concat(
         (function()
@@ -701,7 +715,6 @@ function AO3DownloaderClient:getWorksFromUserPage(username, pseud, catagory, fan
     )
 
     url = url .. "?" .. parameter_string
-
 
     local response_body = {}
     local request = {
@@ -722,18 +735,17 @@ function AO3DownloaderClient:getWorksFromUserPage(username, pseud, catagory, fan
 
     local root = htmlparser.parse(html_body)
 
-    local searchResult = nil
+    local searchResult = AO3WebParser:parseWorkSearchResults(root)
 
-    if catagory == "bookmarks" then
-        searchResult = AO3WebParser:parseUserBookmarks(root)
-    else
-        searchResult = AO3WebParser:parseWorkSearchResults(root)
+    local total_gifts_element = root:select("ul.actions > li > span.current")[1]
+    if total_gifts_element then
+        searchResult.count = tonumber(total_gifts_element:getcontent():match("Gifts%s*%((%d+)%)"))
     end
         
-    searchResult.title = "AO3 Search"
-    searchResult.count_suffix = "Results"
+    searchResult.title = "AO3 Author Gifts"
+    searchResult.count_suffix = "Works"
 
-    return  true, searchResult
+    return true, searchResult
 
 end
 
@@ -1670,6 +1682,54 @@ function AO3WebParser:parseSeries(root, header)
     end
 
     return searchResult
+end
+
+function AO3WebParser:parseCollectionMeta(root)
+
+    local collection_meta = {}
+
+    local titleElement = root:select("h3.heading span.title")[1]
+    collection_meta.title = titleElement:getcontent():match("^%s*(.-)%s*$")
+    -- collection_meta.id = root:select_one("h3.heading span.name"):getContent():match("%((.-)%)")
+    collection_meta.published = root:select("dl.meta dd")[1]:getcontent():match("^%s*(.-)%s*$")
+
+    local author_table = {}
+    for _, li in ipairs(root:select("dd.maintainers li")) do
+        table.insert(author_table, li:select("a")[1]:getcontent():match("^%s*(.-)%s*$"))
+    end
+    collection_meta.author = #author_table > 0 and table.concat(author_table, ", ") or ""
+
+    local description_parts = {}
+    for _, p in ipairs(root:select("blockquote.userstuff p")) do
+        table.insert(description_parts, p:getcontent():match("^%s*(.-)%s*$"))
+    end
+    collection_meta.summary = table.concat(description_parts, "\n")
+
+    collection_meta.iswip = root:select("p.type")[1]:getcontent():match("^%s*(.-)%s*$")
+
+    local tags = {}
+    for _, a in ipairs(root:select("ul.tags li a.tag")) do
+        table.insert(tags, a:getcontent():match("^%s*(.-)%s*$"))
+    end
+    collection_meta.tags = #tags > 0 and table.concat(tags, ", ") or nil
+
+    -- collection_meta.subcollections = root:select_one("a[href$='/collections']"):getContent():match("%((%d+)%)")
+    -- collection_meta.works = root:select_one("a[href$='/works']"):getContent():match("%((%d+)%)")
+    collection_meta.bookmarks = root:select("a[href$='/bookmarks']")[1]:getcontent():match("%((%d+)%)")
+    -- collection_meta.fandoms = root:select_one("a[href$='/fandoms']"):getContent():match("%((%d+)%)")
+    
+    collection_meta.is_restricted = false
+
+    -- series_meta.wordcount = wordsElement and encodeHelper:parseToCodepoints(wordsElement:getcontent()) or "0"
+
+    collection_meta.id = nil
+    collection_meta.relationships = {}
+    collection_meta.characters = {}
+    collection_meta.warnings = {}
+    collection_meta.fandoms = {}
+    collection_meta.series = {}
+
+    return collection_meta
 end
 
 function AO3WebParser:parseUserBookmarks(root)

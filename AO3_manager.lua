@@ -216,6 +216,7 @@ function AO3Manager:fetchFanficsByTag(selectedFandom, sortBy)
     local filter = {
         sort_by = sortBy,
         main_tag = selectedFandom,
+        type = "works"
     }
     local status, searchResult = AO3Manager:executeSearch(filter)
 
@@ -420,6 +421,43 @@ function AO3Manager:getSeriesFromUserPage(username, pseud)
     end
 
     return true, series_result.series
+
+end
+
+function AO3Manager:getWorksFromUserGifts(username)
+    if not NetworkMgr:isConnected() then
+        NetworkMgr:runWhenConnected()
+        return false
+    end
+
+    local currentPage = 1
+
+    -- Fetch the first page of results
+    local status, searchResult = AO3DownloaderClient:getWorksFromUserGifts(username, currentPage)
+
+    if not status then
+        UIManager:show(InfoMessage:new{
+            text = T("Error: %1", searchResult.error),
+            icon = "notice-warning",
+        })
+        return false, searchResult
+    end
+
+    -- Define the function to fetch the next page for the selected fandom
+    searchResult.fetchNextPage = function()
+        currentPage = currentPage + 1
+        local status, searchResult =  AO3DownloaderClient:getWorksFromUserGifts(username, currentPage)
+        if not status then
+            UIManager:show(InfoMessage:new{
+                text = T("Error: %1", searchResult.error),
+                icon = "notice-warning",
+            })
+        end
+
+        return searchResult.works
+    end
+
+    return true, searchResult
 
 end
 

@@ -160,7 +160,7 @@ function AO3UserBrowser:generateMenuTable()
         "Gifted works:",
         self.userData.total_gifts,
         callback = function()
-            self:openFanficBrowserForCategory("gifts", self.userData.total_gifts, nil)
+            self:openFanficBrowserForGifts()
         end,
         separator = true,
     }
@@ -171,7 +171,6 @@ function AO3UserBrowser:generateMenuTable()
         "Works by fandom:",
         "",
         separator = true,
-
     }
 
     table.insert(kv_pairs, fandom_title_item)
@@ -240,6 +239,17 @@ function KeyValuePage:openFanficBrowserForCategory(category, total, fandom_id)
     return searchResult
 end
 
+function AO3UserBrowser:openFanficBrowserForGifts()
+    local status, searchResult = AO3Manager:getWorksFromUserGifts(self.userData.username)
+    if status then
+        FanficBrowser:show(searchResult)
+    else
+        UIManager:show(InfoMessage:new{
+            text = "Error: Failed to fetch gift works for user: " .. tostring(self.userData.username),
+        })
+    end
+end
+
 function AO3UserBrowser:openUserSeriesList()
     local success, seriesList = AO3Manager:getSeriesFromUserPage(self.userData.username, self.userData.pseud)  --
     if success and seriesList then
@@ -301,7 +311,7 @@ function AO3UserBrowser:openUserSeriesList()
 end
 
 function AO3UserBrowser:openUserCollectionsList()
-    local success, collectionsList, getNextPage = AO3Manager:getCollectionsFromUserPage(self.userData.username)  --
+    local success, collectionsList, getNextPage = AO3Manager:getCollectionsFromUserPage(self.userData.username)
     if success and collectionsList then
         local collections_menu_kv = {}
         table.insert(collections_menu_kv, {
