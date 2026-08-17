@@ -181,7 +181,7 @@ function AO3UserBrowser:generateMenuTable()
             T("(%1) %2", fandom.count, fandom.name),
             "",
             callback = function()
-                self:openFanficBrowserForCategory("works", fandom.count, fandom.id)
+                self:openFanficBrowserForCategory("works", fandom.count, fandom.name)
             end
         }
         table.insert(kv_pairs, fandom_item)
@@ -226,12 +226,18 @@ end
 function AO3UserBrowser:openFanficBrowserForCategory(category, total, fandom_id)
     local status, searchResult = AO3Manager:getWorksFromUserPage(self.userData.username, self.userData.pseud, category, fandom_id)
     if status then
+        searchResult.count = total
         FanficBrowser:show(searchResult)
     else
         UIManager:show(InfoMessage:new{
             text = "Error: Failed to fetch works for category: " .. tostring(category),
         })
     end
+end
+
+function KeyValuePage:openFanficBrowserForCategory(category, total, fandom_id)
+    local status, searchResult = AO3Manager:getWorksFromUserPage(AO3UserBrowser.userData.username, AO3UserBrowser.userData.pseud, category, fandom_id)
+    return searchResult
 end
 
 function AO3UserBrowser:openUserSeriesList()

@@ -219,8 +219,6 @@ function AO3Manager:fetchFanficsByTag(selectedFandom, sortBy)
     }
     local status, searchResult = AO3Manager:executeSearch(filter)
 
-    searchResult.filter = filter
-
     searchResult.title = "AO3 Search"
     searchResult.count_suffix = "Results"
 
@@ -270,44 +268,11 @@ function AO3Manager:executeSearch(filter)
         NetworkMgr:runWhenConnected()
         return false, {}
     end
-
-    local parameters = {
-        ["work_search[complete]"] = filter.completion_status or nil,
-        ["work_search[crossover]"] = filter.crossovers or nil,
-        ["work_search[single_chapter]"] = filter.single_chapter or nil,
-        ["work_search[word_count]"] = filter.word_count or nil,
-        ["work_search[language_id]"] = filter.language_id or nil,
-        ["work_search[date_from]"] = filter.date_from or nil,
-        ["work_search[date_to]"] = filter.date_to or nil,
-        ["work_search[fandom_names]"] = filter.fandom_names and table.concat(filter.fandom_names, ",") or nil,
-        ["work_search[rating_ids]"] = filter.rating or nil,
-        ["work_search[archive_warning_ids][]"] = filter.warnings or nil,
-        ["exclude_work_search[archive_warning_ids][]"] = filter.exclude_warnings or nil,
-        ["work_search[category_ids][]"] = filter.categories or nil,
-        ["exclude_work_search[category_ids][]"] = filter.exclude_categories or nil,
-        ["work_search[character_names]"] = filter.characters and table.concat(filter.characters, ",") or nil,
-        ["work_search[relationship_names]"] = filter.relationships and table.concat(filter.relationships, ",") or nil,
-        ["work_search[freeform_names]"] = filter.additional_tags and table.concat(filter.additional_tags, ",") or nil,
-        ["work_search[hits]"] = filter.hits or nil,
-        ["work_search[kudos_count]"] = filter.kudos or nil,
-        ["work_search[comments_count]"] = filter.comments or nil,
-        ["work_search[bookmarks_count]"] = filter.bookmarks or nil,
-        ["work_search[sort_column]"] = filter.sort_by or nil,
-        ["work_search[sort_direction]"] = filter.sort_direction or nil,
-        ["tag_id"] = filter.main_tag or nil,
-        ["work_search[excluded_tag_names]"] = table.concat({
-            filter.exclude_fandom_names and table.concat(filter.exclude_fandom_names, ",") or "",
-            filter.exclude_characters and table.concat(filter.exclude_characters, ",") or "",
-            filter.exclude_relationships and table.concat(filter.exclude_relationships, ",") or "",
-            filter.exclude_additional_tags and table.concat(filter.exclude_additional_tags, ",") or "",
-        }, ","),
-    }
     
     local currentPage = 1
 
     -- Fetch the first page of results
-    local status, searchResult = AO3DownloaderClient:searchByParameters(parameters, currentPage)
-
+    local status, searchResult = AO3DownloaderClient:searchByFilter(filter, currentPage)
     if not status then
         UIManager:show(InfoMessage:new{
             text = _("Error: ") .. (searchResult.error or "Unknown error"),
@@ -318,7 +283,7 @@ function AO3Manager:executeSearch(filter)
     -- Define the function to fetch the next page for the search parameters
     searchResult.fetchNextPage = function()
         currentPage = currentPage + 1
-        local status, searchResult = AO3DownloaderClient:searchByParameters(parameters, currentPage)
+        local status, searchResult = AO3DownloaderClient:searchByFilter(filter, currentPage)
 
         if not status then
             UIManager:show(InfoMessage:new{
@@ -410,42 +375,18 @@ function AO3Manager:getUserData(username, pseud)
 end
 
 function AO3Manager:getWorksFromUserPage(username, pseud, category, fandom_id)
-    if not NetworkMgr:isConnected() then
-        NetworkMgr:runWhenConnected()
-        return false, {}
-    end
-    local status, searchResult = AO3DownloaderClient:getWorksFromUserPage(username, pseud, category, fandom_id)
-    if not status then
-        UIManager:show(InfoMessage:new{
-            text = "Error: Failed to fetch works from user page: " .. (searchResult.error or "Unknown error"),
-        })
-        return false
-    end
+    local filter = {
+        user_id = username,
+        pseud_id = pseud,
+        type = category,
+        fandom_names = {fandom_id}
+    }
+    local status, searchResult = AO3Manager:executeSearch(filter)
 
-    local currentPage = 1
+    searchResult.title = "AO3 Search"
+    searchResult.count_suffix = "Results"
 
-    searchResult.fetchNextPage = function()
-        currentPage = currentPage + 1
-        local status, searchResult = AO3DownloaderClient:getWorksFromUserPage(username, pseud, category, fandom_id, currentPage)
-        if not status then
-            currentPage = currentPage - 1
-            UIManager:show(InfoMessage:new{
-                text = "Error: Failed to fetch works from user page: " .. (searchResult.error or "Unknown error"),
-            })
-            return {}
-        end
-
-        -- no more works to fetch
-        if #searchResult.works == 0 then
-            currentPage = currentPage - 1
-            return {}
-        end
-
-        return searchResult.works
-    end
-
-    return true, searchResult
-
+    return status, searchResult
 end
 
 function AO3Manager:getPseudsForUser(username)

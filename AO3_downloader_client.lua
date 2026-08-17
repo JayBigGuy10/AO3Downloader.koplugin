@@ -425,12 +425,89 @@ function AO3DownloaderClient:downloadEpub(download_link, filepath)
     }
 end
 
-function AO3DownloaderClient:searchByParameters(parameters, page_no)
+function AO3DownloaderClient:searchByFilter(filter, page_no)
     local page = page_no or 1 -- Default to the first page if no page is specified
     logger.dbg("AO3Downloader.koplugin: Executing work search by parameters. Page no: " .. tostring(page_no))
-    local query = {}
+
+    local parameters = {}
+    if filter.type == "works" then
+        parameters = {
+            ["work_search[complete]"] = filter.completion_status or nil,
+            ["work_search[crossover]"] = filter.crossovers or nil,
+            ["work_search[single_chapter]"] = filter.single_chapter or nil,
+            ["work_search[word_count]"] = filter.word_count or nil,
+            ["work_search[language_id]"] = filter.language_id or nil,
+            ["work_search[date_from]"] = filter.date_from or nil,
+            ["work_search[date_to]"] = filter.date_to or nil,
+            ["work_search[fandom_names]"] = filter.fandom_names and table.concat(filter.fandom_names, ",") or nil,
+            ["work_search[rating_ids]"] = filter.rating or nil,
+            ["work_search[archive_warning_ids][]"] = filter.warnings or nil,
+            ["exclude_work_search[archive_warning_ids][]"] = filter.exclude_warnings or nil,
+            ["work_search[category_ids][]"] = filter.categories or nil,
+            ["exclude_work_search[category_ids][]"] = filter.exclude_categories or nil,
+            ["work_search[character_names]"] = filter.characters and table.concat(filter.characters, ",") or nil,
+            ["work_search[relationship_names]"] = filter.relationships and table.concat(filter.relationships, ",") or nil,
+            ["work_search[freeform_names]"] = filter.additional_tags and table.concat(filter.additional_tags, ",") or nil,
+            ["work_search[hits]"] = filter.hits or nil,
+            ["work_search[kudos_count]"] = filter.kudos or nil,
+            ["work_search[comments_count]"] = filter.comments or nil,
+            ["work_search[bookmarks_count]"] = filter.bookmarks or nil,
+            ["work_search[sort_column]"] = filter.sort_by or nil,
+            ["work_search[sort_direction]"] = filter.sort_direction or nil,
+
+            ["work_search[excluded_tag_names]"] = table.concat({
+                filter.exclude_fandom_names and table.concat(filter.exclude_fandom_names, ",") or "",
+                filter.exclude_characters and table.concat(filter.exclude_characters, ",") or "",
+                filter.exclude_relationships and table.concat(filter.exclude_relationships, ",") or "",
+                filter.exclude_additional_tags and table.concat(filter.exclude_additional_tags, ",") or "",
+            }, ","),
+        }
+    elseif filter.type == "bookmarks" then
+        parameters = {
+            ["bookmark_search[complete]"] = filter.completion_status or nil,
+            ["bookmark_search[crossover]"] = filter.crossovers or nil,
+            ["bookmark_search[single_chapter]"] = filter.single_chapter or nil,
+            ["bookmark_search[word_count]"] = filter.word_count or nil,
+            ["bookmark_search[language_id]"] = filter.language_id or nil,
+            ["bookmark_search[date_from]"] = filter.date_from or nil,
+            ["bookmark_search[date_to]"] = filter.date_to or nil,
+            ["bookmark_search[fandom_names]"] = filter.fandom_names and table.concat(filter.fandom_names, ",") or nil,
+            ["bookmark_search[rating_ids]"] = filter.rating or nil,
+            ["bookmark_search[archive_warning_ids][]"] = filter.warnings or nil,
+            ["exclude_bookmark_search[archive_warning_ids][]"] = filter.exclude_warnings or nil,
+            ["bookmark_search[category_ids][]"] = filter.categories or nil,
+            ["exclude_bookmark_search[category_ids][]"] = filter.exclude_categories or nil,
+            ["bookmark_search[character_names]"] = filter.characters and table.concat(filter.characters, ",") or nil,
+            ["bookmark_search[relationship_names]"] = filter.relationships and table.concat(filter.relationships, ",") or nil,
+            ["bookmark_search[freeform_names]"] = filter.additional_tags and table.concat(filter.additional_tags, ",") or nil,
+            ["bookmark_search[hits]"] = filter.hits or nil,
+            ["bookmark_search[kudos_count]"] = filter.kudos or nil,
+            ["bookmark_search[comments_count]"] = filter.comments or nil,
+            ["bookmark_search[bookmarks_count]"] = filter.bookmarks or nil,
+            ["bookmark_search[sort_column]"] = filter.sort_by or nil,
+            ["bookmark_search[sort_direction]"] = filter.sort_direction or nil,
+
+            ["bookmark_search[excluded_tag_names]"] = table.concat({
+                filter.exclude_fandom_names and table.concat(filter.exclude_fandom_names, ",") or "",
+                filter.exclude_characters and table.concat(filter.exclude_characters, ",") or "",
+                filter.exclude_relationships and table.concat(filter.exclude_relationships, ",") or "",
+                filter.exclude_additional_tags and table.concat(filter.exclude_additional_tags, ",") or "",
+            }, ","),
+            ["bookmark_search[with_notes]"] = filter.with_notes or nil,
+            ["bookmark_search[rec]"] = filter.rec or nil,
+        }
+    end
+    if filter.tag_id then
+        parameters["tag_id"] = filter.main_tag or nil
+    elseif filter.user_id then
+        parameters["user_id"] = filter.user_id
+        if filter.pseud_id then
+            parameters["user_pseud"] = filter.pseud_id
+        end
+    end
 
     -- Build the query string from the parameters
+    local query = {}
     for key, value in pairs(parameters) do
         if value == "" then
             table.insert(query, string.format("%s=", encodeHelper:urlEncode(key))) -- Include empty parameters
@@ -447,7 +524,7 @@ function AO3DownloaderClient:searchByParameters(parameters, page_no)
     local queryString = table.concat(query, "&")
 
     -- Construct the full URL
-    local url = string.format("%s/works?commit=Sort+and+Filter&%s", getAO3URL(), queryString)
+    local url = string.format("%s/%s?commit=Sort+and+Filter&%s", getAO3URL(), filter.type, queryString)
 
     local response_body = {}
 
@@ -468,7 +545,16 @@ function AO3DownloaderClient:searchByParameters(parameters, page_no)
     local html_body = table.concat(response_body)
 
     local root = htmlparser.parse(html_body)
-    local searchResult = AO3WebParser:parseWorkSearchResults(root)
+
+    local searchResult
+    if filter.type == "bookmarks" then
+        searchResult = AO3WebParser:parseUserBookmarks(root)
+    elseif filter.type == "works" then
+        searchResult = AO3WebParser:parseWorkSearchResults(root)
+    end
+
+    searchResult.filter = filter
+    searchResult.parameters = parameters
 
     return true, searchResult
 end
@@ -1590,6 +1676,19 @@ function AO3WebParser:parseUserBookmarks(root)
     local searchResult = {
         works = {}
     }
+
+    local resultsCountElement = root:select("#main > h2")[1]
+    if resultsCountElement then
+        local resultsText = resultsCountElement:getcontent()
+        local totalWorks = resultsText:match("of%s*([%d,]+)%s*Bookmarks")
+        if not totalWorks then
+            totalWorks = resultsText:match("^%s*([%d,]+)%s*Bookmarks")
+        end
+        if totalWorks then
+            searchResult.count = tonumber(totalWorks:gsub(",", ""),10)
+        end
+    end
+
     local elements = root:select("li.bookmark")
 
     local count = 1
