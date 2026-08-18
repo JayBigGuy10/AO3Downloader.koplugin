@@ -11,6 +11,7 @@ local _ = require("gettext")
 local FFIUtil = require("ffi/util")
 local T = FFIUtil.template
 local UIManager = require("ui/uimanager")
+local Config = require("fanfic_config")
 local AO3Manager = require("AO3_manager")
 
 local DownloadedFanficsMenu = {}
@@ -34,36 +35,36 @@ end
 local function formatFanficTitle(fanfic)
     local fanfic_read = true
     local first_unread_chapter = nil
+    local unread_count = 0
     if fanfic.chapter_data and #fanfic.chapter_data > 0 then
         for index, chapter in pairs(fanfic.chapter_data) do
-            if not chapter.read then
-                fanfic_read = false
-                break
-            else
-                first_unread_chapter = index
-            end
+                if not chapter.read then
+                    fanfic_read = false
+                    unread_count = unread_count + 1
+                    first_unread_chapter = first_unread_chapter or index
+                end
         end
-    elseif not fanfic.chapter_data or #fanfic.chapter_data == 0 and fanfic.read then
-        fanfic_read = true
     else
-        fanfic_read = false
+        fanfic_read = fanfic.read or false
     end
 
-    local fanfic_complete = true
-
     local chapter_count, chapter_total = fanfic.chapters:match("([^//]+)/([^//]+)")
-
+    local fanfic_complete = true
     if string.find(fanfic.chapters, "?") or chapter_count < chapter_total then
         fanfic_complete = false
     end
 
     local prefix = "  "
     if fanfic_read and (not fanfic_complete) then
-        prefix = "="
+        prefix = "=" 
     elseif fanfic_read and fanfic_complete then
         prefix = "✓"
-    elseif first_unread_chapter and (not fanfic_read) then
-        prefix = tostring(first_unread_chapter)
+    elseif (not fanfic_read) and first_unread_chapter > 1 then
+        if Config:readSetting("show_current_chapter", true) then
+            prefix = "⛉" .. tostring(first_unread_chapter)
+        else
+            prefix = tostring(unread_count)
+        end
     end
     return T("%1 (%2) %3 by %4", prefix, fanfic.chapters, fanfic.title, fanfic.author)
 end
