@@ -59,11 +59,11 @@ function DownloadedFanficsMenu:formatFanficTitle(fanfic)
         prefix = "=" 
     elseif fanfic_read and fanfic_complete then
         prefix = "✓"
-    elseif (not fanfic_read) and first_unread_chapter > 1 then
+    elseif (not fanfic_read) and (first_unread_chapter or 0) > 1 then
         if Config:readSetting("show_current_chapter", true) then
             prefix = "⛉" .. tostring(first_unread_chapter)
         else
-            prefix = tostring(unread_count)
+            prefix = "•󠁏" .. tostring(unread_count)
         end
     end
     return T("%1 (%2) %3 by %4", prefix, fanfic.chapters, fanfic.title, fanfic.author)
