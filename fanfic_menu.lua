@@ -52,39 +52,7 @@ function FanficMenu:getRecentDownloadedFanficItems(limit)
     for i = 1, max_items do
         local fanfic = fanfics[i]
 
-        local fanfic_read = true
-        local first_unread_chapter = nil
-        if fanfic.chapter_data and #fanfic.chapter_data > 0 then
-            for index, chapter in pairs(fanfic.chapter_data) do
-                if not chapter.read then
-                    fanfic_read = false
-                    break
-                else
-                    first_unread_chapter = index
-                end
-            end
-        elseif not fanfic.chapter_data or #fanfic.chapter_data == 0 and fanfic.read then
-            fanfic_read = true
-        else
-            fanfic_read = false
-        end
-
-        local fanfic_complete = true
-
-        local chapter_count, chapter_total = fanfic.chapters:match("([^//]+)/([^//]+)")
-
-        if string.find(fanfic.chapters, "?") or chapter_count < chapter_total then
-            fanfic_complete = false
-        end
-
-        local prefix = "  "
-        if fanfic_read and (not fanfic_complete) then
-            prefix = "="
-        elseif fanfic_read and fanfic_complete then
-            prefix = "✓"
-        elseif first_unread_chapter and (not fanfic_read) then
-            prefix = tostring(first_unread_chapter)
-        end
+        local prefix = DownloadedFanficsMenu:formatFanficTitle(fanfic)
 
         table.insert(menu_items, {
             text = T("%1 (%2) %3 by %4", prefix, fanfic.chapters, fanfic.title, fanfic.author),

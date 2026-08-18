@@ -32,7 +32,7 @@ local function normalizeField(field)
     end
 end
 
-local function formatFanficTitle(fanfic)
+function DownloadedFanficsMenu:formatFanficTitle(fanfic)
     local fanfic_read = true
     local first_unread_chapter = nil
     local unread_count = 0
@@ -133,7 +133,7 @@ function DownloadedFanficsMenu:show(parentMenu, updateFanficCallback)
                     local fandom_fanfic_count = #fanfics
                     for __, fanfic in pairs(fanfics) do
                         table.insert(submenu_items, {
-                            text = formatFanficTitle(fanfic),
+                            text = self:formatFanficTitle(fanfic),
                             id = fanfic.id,
                             callback = function()
                                 -- Show options for the fanfic
@@ -194,7 +194,7 @@ function DownloadedFanficsMenu:show(parentMenu, updateFanficCallback)
 
                                                         for i, menu_item in pairs(parentMenu.item_table) do
                                                             if tostring(menu_item.id) == tostring(fanfic.id) then
-                                                                parentMenu.item_table[i].text = formatFanficTitle(fanfic)
+                                                                parentMenu.item_table[i].text = self:formatFanficTitle(fanfic)
                                                             end
                                                         end
                                                         
@@ -234,7 +234,7 @@ function DownloadedFanficsMenu:show(parentMenu, updateFanficCallback)
 
                                                         for i, menu_item in pairs(parentMenu.item_table) do
                                                             if tostring(menu_item.id) == tostring(fanfic.id) then
-                                                                parentMenu.item_table[i].text = formatFanficTitle(fanfic)
+                                                                parentMenu.item_table[i].text = self:formatFanficTitle(fanfic)
                                                             end
                                                         end
                                                         
@@ -289,7 +289,7 @@ function DownloadedFanficsMenu:show(parentMenu, updateFanficCallback)
 
                                                                         for i, menu_item in pairs(parentMenu.item_table) do
                                                                             if tostring(menu_item.id) == tostring(fanfic.id) then
-                                                                                parentMenu.item_table[i].text = formatFanficTitle(fanfic)
+                                                                                parentMenu.item_table[i].text = self:formatFanficTitle(fanfic)
                                                                             end
                                                                         end
                                                                         
