@@ -827,7 +827,7 @@ function CustomFilterEditor:WorkTagsSubmenu()
                 end
 
                 if self.filter.exclude_additional_tags then
-                    for __, tag in pairs(self.filter.additional_tags) do
+                    for __, tag in pairs(self.filter.exclude_additional_tags) do
                         table.insert(freemformStrings, "-" .. tag)
                     end
                 end
