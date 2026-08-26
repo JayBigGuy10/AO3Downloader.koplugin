@@ -557,6 +557,7 @@ function AO3DownloaderClient:searchByFilter(filter, page_no)
 
     searchResult.filter = filter
     searchResult.parameters = parameters
+    searchResult.count_suffix = "Results"
 
     return true, searchResult
 end

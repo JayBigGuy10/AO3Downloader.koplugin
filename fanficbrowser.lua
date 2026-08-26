@@ -827,7 +827,7 @@ end
 -- fields become tappable to trigger a tag search.
 function FanficBrowser:show(searchResult)
     
-    local title = (searchResult.title or "AO3 Works") .. (searchResult.count and (" | " .. searchResult.count .." " .. searchResult.count_suffix) or "")
+    local title = (searchResult.title or "AO3 Works") .. (searchResult.count and (" | " .. searchResult.count .. " " .. (searchResult.count_suffix or "")) or "")
 
     local browse_window = FanficCardPage:new{
         title = title,

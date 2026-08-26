@@ -220,9 +220,6 @@ function AO3Manager:fetchFanficsByTag(selectedFandom, sortBy)
     }
     local status, searchResult = AO3Manager:executeSearch(filter)
 
-    searchResult.title = "AO3 Search"
-    searchResult.count_suffix = "Results"
-
     return status, searchResult
 
 end
@@ -383,9 +380,6 @@ function AO3Manager:getWorksFromUserPage(username, pseud, category, fandom_id)
         fandom_names = {fandom_id}
     }
     local status, searchResult = AO3Manager:executeSearch(filter)
-
-    searchResult.title = "AO3 Search"
-    searchResult.count_suffix = "Results"
 
     return status, searchResult
 end
