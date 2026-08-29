@@ -52,10 +52,10 @@ function FanficMenu:getRecentDownloadedFanficItems(limit)
     for i = 1, max_items do
         local fanfic = fanfics[i]
 
-        local prefix = DownloadedFanficsMenu:formatFanficTitle(fanfic)
+        local title = DownloadedFanficsMenu:formatFanficTitle(fanfic)
 
         table.insert(menu_items, {
-            text = T("%1 (%2) %3 by %4", prefix, fanfic.chapters, fanfic.title, fanfic.author),
+            text = title,
             callback = function()
                 fanfic.last_accessed = os.date("%Y-%m-%d %H:%M:%S")
                 DownloadedFanfics.update(fanfic)
