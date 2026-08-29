@@ -767,6 +767,10 @@ function FanficCardPage:onSeriesFieldTap(values, full_text)
 end
 
 function FanficBrowser:showDownloadDialog(fanfic)
+    if not fanfic.id then 
+        return
+    end
+
     local confirmDialog
     confirmDialog = ButtonDialog:new({
         title = T("Would you like to download the work: %1 by %2?", fanfic.title, fanfic.author),
