@@ -66,7 +66,7 @@ function DownloadedFanficsMenu:formatFanficTitle(fanfic)
             prefix = "•󠁏" .. tostring(unread_count)
         end
     end
-    return T("%1 (%2) %3 by %4", prefix, fanfic.chapters, fanfic.title, fanfic.author)
+    return T("%1 (%2) %3 by %4", prefix, fanfic.chapters, fanfic.title, fanfic.author ~= "" and fanfic.author or "Anonymous")
 end
 
 function DownloadedFanficsMenu:show(parentMenu, updateFanficCallback)

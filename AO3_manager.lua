@@ -11,19 +11,23 @@ local DownloadedFanfics = require("downloaded_fanfics")
 local FanficReader = require("fanfic_reader")
 local Config = require("fanfic_config")
 local AO3DownloaderClient = require("AO3_downloader_client")
+local util = require("util")
 
 local AO3Manager = {}
 
 function AO3Manager:generateFileName(metadata)
     local template = Config:readSetting("filename_template", "%I")
     -- local template = "%T--%A--(%I)"
+    local function sanitize(value)
+        return util.getSafeFilename(tostring(value or ""))
+    end
 
     local replace = {
-        ["%I"] = metadata.id,
-        ["%T"] = metadata.title:gsub("%s+", "_"),
-        ["%A"] = metadata.author:gsub("%s+", "_"),
+        ["%I"] = sanitize(metadata.id),
+        ["%T"] = sanitize(metadata.title):gsub("%s+", "_"),
+        ["%A"] = sanitize(metadata.author):gsub("%s+", "_"),
     }
-    return template:gsub("(%%%a)", replace)
+    return sanitize((template:gsub("(%%%a)", replace)))
 end
 
 function AO3Manager:DownloadFanfic(id)
