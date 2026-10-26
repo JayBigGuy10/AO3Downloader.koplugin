@@ -402,19 +402,45 @@ function AO3Manager:getPseudsForUser(username)
 end
 
 function AO3Manager:getSeriesFromUserPage(username, pseud)
+    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false, {}
     end
-    local series_result = AO3DownloaderClient:getUserSeries(username, pseud)
+
+
+    local current_page = 1
+
+    local series_result = AO3DownloaderClient:getUserSeries(username, pseud, current_page)
+
+    local function getNextPage()
+        current_page = current_page + 1
+        local next_page_result = AO3DownloaderClient:getUserSeries(username, pseud, current_page)
+        if not next_page_result.success then
+            current_page = current_page - 1
+            UIManager:show(InfoMessage:new{
+                text = "Error: Failed to fetch series from users page: " .. (next_page_result.error or "Unknown error"),
+            })
+            return {}
+        end
+
+        -- no more series to fetch
+        if #next_page_result.series == 0 then
+            current_page = current_page - 1
+            return {}
+        end
+
+        return  next_page_result.series
+
+    end
     if not series_result.success then
         UIManager:show(InfoMessage:new{
-            text = "Error: Failed to fetch series from user page: " .. (series_result.error or "Unknown error"),
+            text = "Error: Failed to fetch series from users page: " .. (series_result.error or "Unknown error"),
         })
         return false
     end
 
-    return true, series_result.series
+    return true, series_result.series, getNextPage
 
 end
 
@@ -456,19 +482,22 @@ function AO3Manager:getWorksFromUserGifts(username)
 end
 
 function AO3Manager:getCollectionsFromUserPage(username)
+    local NetworkMgr = require("ui/network/manager")
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()
         return false, {}
     end
-    local works_result = AO3DownloaderClient:getUserCollections(username)
+
+    local currentPage = 1
+
+    local works_result = AO3DownloaderClient:getUserCollections(username, currentPage)
     if not works_result.success then
         UIManager:show(InfoMessage:new{
-            text = "Error: Failed to fetch works from user collections page: " .. (works_result.error or "Unknown error"),
+            text = "Error: Failed to fetch collections from users collections page: " .. (works_result.error or "Unknown error"),
         })
         return false
     end
 
-    local currentPage = 1
 
     local function getNextPage()
         currentPage = currentPage + 1
@@ -476,13 +505,13 @@ function AO3Manager:getCollectionsFromUserPage(username)
         if not next_page_result.success then
             currentPage = currentPage - 1
             UIManager:show(InfoMessage:new{
-                text = "Error: Failed to fetch works from user collections page: " .. (next_page_result.error or "Unknown error"),
+                text = "Error: Failed to fetch collections from users collections page: " .. (next_page_result.error or "Unknown error"),
             })
             return {}
         end
 
         -- no more works to fetch
-        if #next_page_result.works == 0 then
+        if #next_page_result.collections == 0 then
             currentPage = currentPage - 1
             return {}
         end
