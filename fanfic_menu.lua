@@ -83,7 +83,7 @@ function FanficMenu:show()
         {
             text = "\u{f15c} View downloaded fanfics",
             callback = function()
-                self:onViewDownloadedFanfics()
+                DownloadedFanficsMenu:show(self.menuWidget)
             end,
         },
         {
@@ -507,12 +507,6 @@ function FanficMenu:onBrowseByTag(selectedTag)
     end
 
     self.menuWidget:GoDownInMenu("Sort by...", menu_items)
-end
-
-function FanficMenu:onViewDownloadedFanfics()
-    DownloadedFanficsMenu:show(self.menuWidget, function(fanfic, metadataOnly)
-        AO3Manager:UpdateFanfic(fanfic, metadataOnly)
-    end)
 end
 
 function FanficMenu:onSelectUserSearch()

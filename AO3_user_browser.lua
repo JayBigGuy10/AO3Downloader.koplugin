@@ -226,8 +226,8 @@ function AO3UserBrowser:loadPage(title, menu_table, keeping_current_page)
     UIManager:show(self.AO3UserWindow)
 end
 
-function AO3UserBrowser:openFanficBrowserForCategory(category, total, fandom_id)
-    local status, searchResult = AO3Manager:getWorksFromUserPage(self.userData.username, self.userData.pseud, category, fandom_id)
+function AO3UserBrowser:openFanficBrowserForCategory(category, total, fandom_name)
+    local status, searchResult = AO3Manager:getWorksFromUserPage(self.userData.username, self.userData.pseud, category, fandom_name)
     if status then
         searchResult.count = total
         FanficBrowser:show(searchResult)
@@ -236,11 +236,6 @@ function AO3UserBrowser:openFanficBrowserForCategory(category, total, fandom_id)
             text = "Error: Failed to fetch works for category: " .. tostring(category),
         })
     end
-end
-
-function KeyValuePage:openFanficBrowserForCategory(category, total, fandom_id)
-    local status, searchResult = AO3Manager:getWorksFromUserPage(AO3UserBrowser.userData.username, AO3UserBrowser.userData.pseud, category, fandom_id)
-    return searchResult
 end
 
 function AO3UserBrowser:openFanficBrowserForGifts()

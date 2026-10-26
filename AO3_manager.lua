@@ -376,12 +376,12 @@ function AO3Manager:getUserData(username, pseud)
 
 end
 
-function AO3Manager:getWorksFromUserPage(username, pseud, category, fandom_id)
+function AO3Manager:getWorksFromUserPage(username, pseud, category, fandom_name)
     local filter = {
         user_id = username,
         pseud_id = pseud,
         type = category,
-        fandom_names = {fandom_id}
+        fandom_names = {fandom_name}
     }
     local status, searchResult = AO3Manager:executeSearch(filter)
 

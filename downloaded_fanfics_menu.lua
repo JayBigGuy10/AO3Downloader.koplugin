@@ -69,7 +69,7 @@ function DownloadedFanficsMenu:formatFanficTitle(fanfic)
     return T("%1 (%2) %3 by %4", prefix, fanfic.chapters, fanfic.title, fanfic.author ~= "" and fanfic.author or "Anonymous")
 end
 
-function DownloadedFanficsMenu:show(parentMenu, updateFanficCallback)
+function DownloadedFanficsMenu:show(parentMenu)
 
     local function refreshDownloadMenu()
         local downloaded_fanfics = DownloadedFanfics.getAll()
@@ -186,7 +186,7 @@ function DownloadedFanficsMenu:show(parentMenu, updateFanficCallback)
                                                 callback = function()
                                                     UIManager:scheduleIn(1, function()
                                                         -- Update the fanfic
-                                                        updateFanficCallback(fanfic)
+                                                        AO3Manager:UpdateFanfic(fanfic)
                                                         UIManager:close(dialog)
 
                                                         local downloaded_fanfics = DownloadedFanfics.getAll()
