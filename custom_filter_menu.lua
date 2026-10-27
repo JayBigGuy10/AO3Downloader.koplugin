@@ -485,8 +485,7 @@ function CustomFilterMenu:refreshMainMenu()
                             {
                                 text = "Search using filter",
                                 callback = function()
-                                    self.filter = filter.parameters
-                                    self:executeSearch()
+                                    self:executeSearch(filter)
                                     UIManager:close(optionsDialog)
                                 end,
                             },
@@ -504,7 +503,6 @@ function CustomFilterMenu:refreshMainMenu()
                             {
                                 text = "Delete filter",
                                 callback = function()
-                                    self.filter = filter.parameters
                                     local filters = Config:readSetting("saved_filters")
                                     filters[filter.title] = nil
                                     Config:saveSetting("saved_filters", filters)
@@ -606,7 +604,7 @@ function CustomFilterMenu:FilterCrafter()
         {
             text = "\u{f002} Execute Search",
             callback = function()
-                self:executeSearch()
+                self:executeSearch(self.filter)
             end,
         },
     }
@@ -615,7 +613,7 @@ function CustomFilterMenu:FilterCrafter()
 end
 
 function CustomFilterMenu:UpdateFilterCrafter(filter)
-    self.filter = deepcopy(filter.parameters)
+    self.filter = deepcopy(filter)
     local filterMenuOptions = {
         {
             text_func = function()
@@ -686,7 +684,7 @@ function CustomFilterMenu:UpdateFilterCrafter(filter)
         {
             text = "\u{f002} Execute Search",
             callback = function()
-                self:executeSearch()
+                self:executeSearch(self.filter)
             end,
         },
     }
@@ -702,7 +700,7 @@ function CustomFilterMenu:OverwriteFilter(filter)
     local filters = Config:readSetting("saved_filters", {})
 
 
-    filters[filter.title] =  { title = filter.title, parameters = self.filter }
+    filters[filter.title] = self.filter
     Config:saveSetting("saved_filters", filters)
     UIManager:show(InfoMessage:new({
         text = 'Filter "' .. filter.title .. '" has been overwritten',
@@ -744,14 +742,15 @@ function CustomFilterMenu:SaveFilters()
                             return
                         end
 
-                        local newFilter = { title = value, parameters = self.filter }
-                        filters[newFilter.title] = newFilter
+                        self.filter.title = value
+
+                        filters[self.filter.title] = self.filter
                         Config:saveSetting("saved_filters", filters)
                         UIManager:show(InfoMessage:new({
                             text = 'Filter "' .. value .. '" has been saved',
                         }))
                         self:goBack()
-                        self:UpdateFilterCrafter(newFilter)
+                        self:UpdateFilterCrafter(self.filter)
                         UIManager:close(inputDialog)
                         self.menuWidget:updateMenuBack(1, nil, CustomFilterMenu:refreshMainMenu(), nil)
                     end,
@@ -1164,7 +1163,7 @@ function CustomFilterMenu:selectRating()
         },
         {
             text = "Teen and Up Audiences",
-            value = "1q",
+            value = "11",
         },
         {
             text = "Mature",
@@ -1371,16 +1370,16 @@ function CustomFilterMenu:selectSortDirection()
 end
 
 -- Execute the search with the crafted filter
-function CustomFilterMenu:executeSearch()
-    if not self.filter.main_tag then
+function CustomFilterMenu:executeSearch(filter)
+    if not filter.main_tag then
         UIManager:show(InfoMessage:new({
             text = _("Main tag is required"),
         }))
         return
     end
     UIManager:scheduleIn(1, function()
-        self.filter.type = "works"
-        local status, searchResult = AO3Manager:executeSearch(self.filter)
+        filter.type = "works"
+        local status, searchResult = AO3Manager:executeSearch(filter)
 
         if not status then
             UIManager:show(InfoMessage:new({

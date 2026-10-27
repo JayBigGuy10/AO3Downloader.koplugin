@@ -612,12 +612,12 @@ function CustomFilterEditor:OverwriteFilter(filter)
     local filters = Config:readSetting("saved_filters", {})
 
 
-    filters[filter.title] =  { title = filter.title, parameters = self.filter }
+    filters[filter.title] =  self.filter
     Config:saveSetting("saved_filters", filters)
     UIManager:show(InfoMessage:new({
         text = 'Filter "' .. filter.title .. '" has been overwritten',
     }))
-    self.menuWidget:updateMenuBack(1, nil, CustomFilterEditor:refreshMainMenu(), nil)
+
 end
 
 function CustomFilterEditor:SaveFilters()
@@ -654,8 +654,9 @@ function CustomFilterEditor:SaveFilters()
                             return
                         end
 
-                        local newFilter = { title = value, parameters = self.filter }
-                        filters[newFilter.title] = newFilter
+                        self.filter.title = value
+
+                        filters[self.filter.title] = self.filter
                         Config:saveSetting("saved_filters", filters)
                         UIManager:show(InfoMessage:new({
                             text = 'Filter "' .. value .. '" has been saved',
@@ -663,7 +664,7 @@ function CustomFilterEditor:SaveFilters()
                         self:goBack()
                         -- self:UpdateFilterCrafter(newFilter)
                         UIManager:close(inputDialog)
-                        self.menuWidget:updateMenuBack(1, nil, CustomFilterEditor:refreshMainMenu(), nil)
+
                     end,
                 },
             },
@@ -1035,7 +1036,7 @@ function CustomFilterEditor:selectRating()
         },
         {
             text = "Teen and Up Audiences",
-            value = "1q",
+            value = "11",
         },
         {
             text = "Mature",
