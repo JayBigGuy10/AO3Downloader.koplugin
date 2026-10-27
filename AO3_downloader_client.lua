@@ -334,17 +334,7 @@ function AO3DownloaderClient:GetSessionStatus()
     local is_logged_in = #root:select('body.logged-in') > 0
 
     if is_logged_in then
-        local usernames_select = root:select('a[href^="/users/"]')
-
-        if  #usernames_select == 0 then
-            return {
-                session_exists = true,
-                success = false,
-                error = T("Failed to parse username from AO3 homepage."),
-            }
-        end
-
-        local username = usernames_select[1]:getcontent()
+        local username = body_content:match('<a href="/users/([%w_]+)/-"')
 
         return {
             session_exists = true,
@@ -1866,7 +1856,7 @@ function AO3WebParser:parseCollectionMeta(root)
 
     local titleElement = root:select("h3.heading span.title")[1]
     collection_meta.title = titleElement:getcontent():match("^%s*(.-)%s*$")
-    -- collection_meta.id = root:select_one("h3.heading span.name"):getContent():match("%((.-)%)")
+
     collection_meta.published = root:select("dl.meta dd")[1]:getcontent():match("^%s*(.-)%s*$")
 
     local author_table = {}
@@ -1889,14 +1879,20 @@ function AO3WebParser:parseCollectionMeta(root)
     end
     collection_meta.tags = #tags > 0 and table.concat(tags, ", ") or nil
 
-    -- collection_meta.subcollections = root:select_one("a[href$='/collections']"):getContent():match("%((%d+)%)")
-    -- collection_meta.works = root:select_one("a[href$='/works']"):getContent():match("%((%d+)%)")
-    collection_meta.bookmarks = root:select("a[href$='/bookmarks']")[1]:getcontent():match("%((%d+)%)")
-    -- collection_meta.fandoms = root:select_one("a[href$='/fandoms']"):getContent():match("%((%d+)%)")
+    for _, el in ipairs(root:select("a[href^='/collections/']")) do
+        if el:getcontent() == "Parent Collection" then
+            collection_meta.parent_collection = el.attributes.href:match("^/collections/([^/]+)")
+            break
+        end
+    end
+
+    local subcollectionElements = root:select("a[href^='/collections/'][href$='/collections']")
+    collection_meta.subcollections = subcollectionElements[1] and subcollectionElements[1]:getcontent() or nil
+
+    collection_meta.bookmarked_items = root:select("a[href^='/collections/'][href$='/bookmarks']")[1]:getcontent()
+    collection_meta.fandom_count = root:select("a[href^='/collections/'][href$='/fandoms']")[1]:getcontent()
     
     collection_meta.is_restricted = false
-
-    -- series_meta.wordcount = wordsElement and encodeHelper:parseToCodepoints(wordsElement:getcontent()) or "0"
 
     collection_meta.id = nil
     collection_meta.relationships = {}

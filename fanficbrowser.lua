@@ -567,6 +567,64 @@ function FanficCardPage:buildCard(fanfic)
             addTappableField(series_display, series_full, stats_face, tag_line_height,series_callback)
         end
 
+        -- Subcollections in a collection
+        if fanfic.subcollections then
+            local series_full = fanfic.subcollections
+            local series_display = truncateToFit(series_full, stats_face, tag_line_height)
+            local collection_callback = nil
+            if self.searchByTagCallback then
+                collection_callback = function()
+                    -- todo open the collections list here
+                end
+            end
+            addTappableField(series_display, series_full, stats_face, tag_line_height,collection_callback)
+        end
+
+        if fanfic.parent_collection then
+            local series_full = "Parent Collection: "..fanfic.parent_collection
+            local series_display = truncateToFit(series_full, stats_face, tag_line_height)
+            local collection_callback = function()
+                UIManager:scheduleIn(1, function()
+                    local status, searchResult = AO3Manager:getWorksFromCollection(fanfic.parent_collection)
+                    if not status then
+                        return
+                    end
+                    FanficBrowser:show(searchResult)
+                end)
+                UIManager:show(InfoMessage:new{
+                    text = _("Opening Parent Collection: " .. fanfic.parent_collection),
+                    timeout = 1,
+                })
+            end
+            addTappableField(series_display, series_full, stats_face, tag_line_height,collection_callback)
+        end
+
+        -- Fandoms in a collection
+        if fanfic.fandom_count then
+            local series_full = fanfic.fandom_count
+            local series_display = truncateToFit(series_full, stats_face, tag_line_height)
+            local collection_callback = nil
+            if self.searchByTagCallback then
+                collection_callback = function()
+                    -- todo maybe open the fandoms list here
+                end
+            end
+            addTappableField(series_display, series_full, stats_face, tag_line_height,collection_callback)
+        end
+
+        -- Bookmarked items in a collection
+        if fanfic.bookmarked_items then
+            local series_full = fanfic.bookmarked_items
+            local series_display = truncateToFit(series_full, stats_face, tag_line_height)
+            local collection_callback = nil
+            if self.searchByTagCallback then
+                collection_callback = function()
+                    -- todo open the bookmarked items list here
+                end
+            end
+            addTappableField(series_display, series_full, stats_face, tag_line_height,collection_callback)
+        end
+
         -- == SEPARATOR before summary ==
         addSpacing(Size.padding.small)
         addElement(LineWidget:new{
