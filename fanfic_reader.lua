@@ -13,6 +13,9 @@ local MultiInputDialog = require("ui/widget/multiinputdialog")
 local FanficBookmarkDialog = require("fanfic_bookmark_dialog")
 local logger = require("logger")
 local MenuStack = require("menu_stack")
+local util = require("util")
+local Device = require("device")
+local NetworkMgr = require("ui/network/manager")
 
 local FFIUtil = require("ffi/util")
 local T = FFIUtil.template
@@ -24,6 +27,149 @@ local FanficReader = {
     current_fanfic = nil,
     current_chapter = nil,
 }
+
+function FanficReader:giveKudosToWork(fanfic_id)
+
+    if not NetworkMgr:isConnected() then
+        NetworkMgr:runWhenConnected()
+        return
+    end
+
+    local request_result = AO3DownloaderClient:kudosWork(fanfic_id)
+
+    if request_result.success then
+        UIManager:show(InfoMessage:new({
+            text = "Thank you for leaving kudos!",
+        }))
+        return
+    end
+
+    UIManager:show(InfoMessage:new({
+        text = "Error: " .. request_result.error,
+    }))
+end
+
+function FanficReader:toggleWorkMarkedForLater(fanfic)
+
+    if not NetworkMgr:isConnected() then
+        NetworkMgr:runWhenConnected()
+        return
+    end
+
+    local request_result = AO3DownloaderClient:markForLaterWork(self.current_fanfic.id,
+        self.current_fanfic.markedForLater)
+
+    self.current_fanfic.markedForLater = not self.current_fanfic.markedForLater
+    DownloadedFanfics.update(self.current_fanfic, false)
+
+    if request_result.success then
+        UIManager:show(InfoMessage:new({
+            text = self.current_fanfic.markedForLater and "Fanfic Marked for Later" or
+                "Fanfic Marked as Read",
+        }))
+    else
+        UIManager:show(InfoMessage:new({
+            text = "Error: " .. request_result.error,
+        }))
+    end
+
+end
+
+function FanficReader:onEndOfFic()
+    Device:performHapticFeedback("CONTEXT_CLICK")
+
+    local button_dialog
+    local buttons = {
+        {
+            {
+                text = "Bookmark",
+                callback = function()
+                    
+                end,
+            },
+            {
+                text_func = function ()
+                    return self.current_fanfic.markedForLater and "Mark as read" or "Mark for later"
+                end,
+                callback = function()
+                    self:toggleWorkMarkedForLater(self.current_fanfic)              
+                end,
+            },
+        },
+        {
+            {
+                text = "Leave Comment",
+                callback = function()
+                    
+                end,
+            },
+            {
+                text = "Subscribe",
+                callback = function()
+                    UIManager:close(button_dialog)
+                    
+                end,
+            },
+        },
+        {
+            {
+                text = "Kudos ♥",
+                callback = function ()
+                    self:giveKudosToWork(self.current_fanfic.id)
+                end,
+            },
+            {
+                text = "Update",
+                callback = function()
+                    UIManager:close(button_dialog)
+                    
+                end,
+            },
+        },
+        {
+            {
+                text = "Go to beginning",
+                callback = function()
+                    UIManager:close(button_dialog)
+                    self.ui.gotopage:onGoToBeginning()
+                end,
+            },
+            {
+                text = "AO3 Downloader",
+                callback = function()
+
+                end,
+            },
+        },
+        {
+            {
+                text = "Delete File",
+                callback = function()
+                    UIManager:close(button_dialog)
+
+                end,
+            },
+            {
+                text = "File browser",
+                callback = function()
+                    UIManager:close(button_dialog)
+                    -- Ditto
+                    UIManager:nextTick(function()
+                        self:openFileBrowser()
+                    end)
+                end,
+            },
+        },
+    }
+    button_dialog = ButtonDialog:new{
+        name = "end_document",
+        title = "You've reached the end of the fic.\nWhat would you like to do?",
+        title_align = "center",
+        buttons = buttons,
+    }
+    UIManager:show(button_dialog)
+
+end
 
 function FanficReader:show(options)
 
@@ -123,30 +269,7 @@ function FanficReader:addToMainMenu(menu_items)
                     {
                         text = self.current_fanfic.markedForLater and "Mark as read" or "Mark for later",
                         callback = function()
-                            local NetworkMgr = require("ui/network/manager")
-
-                            if not NetworkMgr:isConnected() then
-                                NetworkMgr:runWhenConnected()
-                                return
-                            end
-
-                            local request_result = AO3DownloaderClient:markForLaterWork(self.current_fanfic.id,
-                                self.current_fanfic.markedForLater)
-
-                            self.current_fanfic.markedForLater = not self.current_fanfic.markedForLater
-                            DownloadedFanfics.update(self.current_fanfic, false)
-
-                            if request_result.success then
-                                UIManager:show(InfoMessage:new({
-                                    text = self.current_fanfic.markedForLater and "Fanfic Marked for Later" or
-                                        "Fanfic Marked as Read",
-                                }))
-                            else
-                                UIManager:show(InfoMessage:new({
-                                    text = "Error: " .. request_result.error,
-                                }))
-                            end
-
+                            self:toggleWorkMarkedForLater(self.current_fanfic)
                             UIManager:close(dialog)
                         end,
                     }
@@ -335,26 +458,8 @@ function FanficReader:addToMainMenu(menu_items)
         text = "Give kudos to work ♥",
         sorting_hint = "main",
         keep_menu_open = true,
-        callback = function()
-            local NetworkMgr = require("ui/network/manager")
-
-            if not NetworkMgr:isConnected() then
-                NetworkMgr:runWhenConnected()
-                return
-            end
-
-            local request_result = AO3DownloaderClient:kudosWork(self.current_fanfic.id)
-
-            if request_result.success then
-                UIManager:show(InfoMessage:new({
-                    text = "Thank you for leaving kudos!",
-                }))
-                return
-            end
-
-            UIManager:show(InfoMessage:new({
-                text = "Error: " .. request_result.error,
-            }))
+        callback = function ()
+            self:giveKudosToWork(self.current_fanfic.id)
         end,
     }
 
@@ -420,6 +525,11 @@ function FanficReader:hookWithPriorityOntoReaderUiEvents(ui)
     end
     eventListener.onReaderReady = function()
         self:onReaderReady()
+    end
+    eventListener.onEndOfBook = function ()
+        if self.is_showing then
+            self:onEndOfFic()
+        end  
     end
 
     table.insert(ui, 2, eventListener)
