@@ -27,6 +27,13 @@ local FanficReader = {
 
 function FanficReader:show(options)
 
+    if not util.fileExists(options.fanfic_path) then
+        UIManager:show(InfoMessage:new({
+            text = "Error: File does not exist, update the fic or delete its entry",
+        }))
+        return
+    end
+
     MenuStack:closeAllMenus()
 
     self.current_fanfic = options.current_fanfic
