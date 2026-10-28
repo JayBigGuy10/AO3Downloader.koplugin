@@ -16,6 +16,7 @@ local MenuStack = require("menu_stack")
 local util = require("util")
 local Device = require("device")
 local NetworkMgr = require("ui/network/manager")
+local AO3Manager = require("AO3_manager")
 
 local FFIUtil = require("ffi/util")
 local T = FFIUtil.template
@@ -286,8 +287,21 @@ function FanficReader:onEndOfFic()
             {
                 text = "Update",
                 callback = function()
-                    UIManager:close(button_dialog)
-                    
+                    UIManager:scheduleIn(1, function()
+                        -- Update the fanfic
+                        AO3Manager:UpdateFanfic(self.current_fanfic)
+                        UIManager:close(button_dialog)
+
+                        -- Reopen the work
+                        FanficReader:show({
+                            fanfic = self.current_fanfic,
+                            chapter_opening_at = nil,
+                        })
+                    end)
+                    UIManager:show(InfoMessage:new({
+                        text = "Downloading work may take some time…",
+                        timeout = 1,
+                    }))
                 end,
             },
         },

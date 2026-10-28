@@ -44,6 +44,13 @@ function Fanfic:onDispatcherRegisterActions()
         general = true,
     })
 
+    Dispatcher:registerAction("AO3Downloader_ShowFanficReader", {
+        category = "none",
+        event = "OpenAO3FanficReader",
+        title = _("AO3 Downloader: open fanfic"),
+        general = true,
+    })
+
 end
 
 function Fanfic:onOpenAO3DownloaderMenu()
@@ -53,6 +60,10 @@ function Fanfic:onOpenAO3DownloaderMenu()
 
     self.menu = FanficMenu:show()
     UIManager:show(self.menu)
+end
+
+function Fanfic:onOpenAO3FanficReader(options)
+    FanficReader:show(options)
 end
 
 return Fanfic

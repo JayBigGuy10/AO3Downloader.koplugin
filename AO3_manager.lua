@@ -8,10 +8,10 @@ local InfoMessage = require("ui/widget/infomessage")
 local ConfirmBox = require("ui/widget/confirmbox")
 local BD = require("ui/bidi")
 local DownloadedFanfics = require("downloaded_fanfics")
-local FanficReader = require("fanfic_reader")
 local Config = require("fanfic_config")
 local AO3DownloaderClient = require("AO3_downloader_client")
 local util = require("util")
+local Event = require("ui/event")
 
 local AO3Manager = {}
 
@@ -113,10 +113,10 @@ function AO3Manager:DownloadFanfic(id)
         ok_text = _("Read now"),
         ok_callback = function()
 
-            FanficReader:show({
+            UIManager:broadcastEvent(Event:new("OpenAO3FanficReader", {
                 fanfic = fanfic,
                 chapter_opening_at = nil,
-            })
+            }))
 
         end,
     })
