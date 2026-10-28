@@ -241,7 +241,7 @@ function FanficMenu:onSearchFanficMenu()
         {
             text = _("Download work by ID"),
             callback = function()
-                self:onShowFanficSearch()
+                FanficSearch:show()
             end,
         },
         {
@@ -264,12 +264,6 @@ function FanficMenu:onSearchFanficMenu()
         }
     }
     self.menuWidget:GoDownInMenu("Select search mode", menu_items)
-end
-
-function FanficMenu:onShowFanficSearch()
-    FanficSearch:show(function(fanficId)
-        AO3Manager:DownloadFanfic(fanficId)
-    end)
 end
 
 function FanficMenu:onSelectTag(category)

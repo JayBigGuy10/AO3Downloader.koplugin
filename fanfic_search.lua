@@ -1,11 +1,12 @@
 local InputDialog = require("ui/widget/inputdialog")
 local InfoMessage = require("ui/widget/infomessage")
 local UIManager = require("ui/uimanager")
+local AO3Manager = require("AO3_manager")
 local _ = require("gettext")
 
 local FanficSearch = {}
 
-function FanficSearch:show(onDownloadCallback)
+function FanficSearch:show()
     local fanfic_lookup_dialog
     fanfic_lookup_dialog = InputDialog:new{
         title = _("Enter AO3 fanfic id to download"),
@@ -33,7 +34,7 @@ function FanficSearch:show(onDownloadCallback)
                         end
 
                         UIManager:scheduleIn(1, function()
-                            onDownloadCallback(inputText)
+                            AO3Manager:DownloadFanfic(inputText)
                         end)
 
                         UIManager:show(InfoMessage:new({
