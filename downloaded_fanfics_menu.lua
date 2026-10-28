@@ -150,8 +150,7 @@ function DownloadedFanficsMenu:show(parentMenu)
                                             UIManager:close(dialog)
 
                                             FanficReader:show({
-                                                fanfic_path = fanfic.path,
-                                                current_fanfic = fanfic,
+                                                fanfic = fanfic,
                                                 chapter_opening_at = nil,
                                             })
 
@@ -434,8 +433,7 @@ function DownloadedFanficsMenu:showFanficChapterSelect(fanfic, parentMenu)
             text = (chapter.read and "✓ " or "") .. chapter.name,
             callback = function()
                 FanficReader:show({
-                    fanfic_path = fanfic.path,
-                    current_fanfic = fanfic,
+                    fanfic = fanfic,
                     chapter_opening_at = idx,
                 })
             end,

@@ -107,8 +107,6 @@ function AO3Manager:DownloadFanfic(id)
 
     DownloadedFanfics.add(fanfic)
 
-
-
     -- Show confirmation dialog
     UIManager:show(ConfirmBox:new{
         text = T(_("File saved to:\n%1\nWould you like to read the downloaded work now?"), BD.filepath(fanfic.path)),
@@ -116,8 +114,7 @@ function AO3Manager:DownloadFanfic(id)
         ok_callback = function()
 
             FanficReader:show({
-                fanfic_path = fanfic.path,
-                current_fanfic = fanfic,
+                fanfic = fanfic,
                 chapter_opening_at = nil,
             })
 

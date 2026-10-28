@@ -338,7 +338,7 @@ end
 
 function FanficReader:show(options)
 
-    if not util.fileExists(options.fanfic_path) then
+    if not util.fileExists(options.fanfic.path) then
         UIManager:show(InfoMessage:new({
             text = "Error: File does not exist, update the fic or delete its entry",
         }))
@@ -347,20 +347,20 @@ function FanficReader:show(options)
 
     MenuStack:closeAllMenus()
 
-    self.current_fanfic = options.current_fanfic
+    self.current_fanfic = options.fanfic
+    self.chapter_opening_at = options.chapter_opening_at
 
     if self.is_showing then
         -- if we're showing, just switch the document
-        ReaderUI.instance:switchDocument(options.fanfic_path)
+        ReaderUI.instance:switchDocument(self.current_fanfic.path)
     else
         -- took this from opds reader
         local Event = require("ui/event")
         UIManager:broadcastEvent(Event:new("SetupShowReader"))
 
-        ReaderUI:showReader(options.fanfic_path)
+        ReaderUI:showReader(self.current_fanfic.path)
     end
 
-    self.chapter_opening_at = options.chapter_opening_at
     self.is_showing = true
 end
 

@@ -60,8 +60,7 @@ function FanficMenu:getRecentDownloadedFanficItems(limit)
                 fanfic.last_accessed = os.date("%Y-%m-%d %H:%M:%S")
                 DownloadedFanfics.update(fanfic)
                 FanficReader:show({
-                    fanfic_path = fanfic.path,
-                    current_fanfic = fanfic,
+                    fanfic = fanfic,
                     chapter_opening_at = nil,
                 })
             end,

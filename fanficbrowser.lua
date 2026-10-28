@@ -685,8 +685,7 @@ function FanficCardPage:onTitleTap(fanfic)
                         callback = function()
                             UIManager:close(dialog)
                             FanficReader:show({
-                                fanfic_path = downloaded.path,
-                                current_fanfic = downloaded,
+                                fanfic = downloaded,
                                 chapter_opening_at = nil,
                             })
                         end,
