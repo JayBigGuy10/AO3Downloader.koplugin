@@ -225,7 +225,7 @@ function DownloadedFanficsMenu:show(parentMenu)
                                                 callback = function()
                                                     UIManager:scheduleIn(1, function()
                                                         -- Refresh the fanfic metadata
-                                                        updateFanficCallback(fanfic, true)
+                                                        AO3Manager:UpdateFanfic(fanfic, true)
                                                         UIManager:close(dialog)
 
                                                         local downloaded_fanfics = DownloadedFanfics.getAll()
