@@ -295,7 +295,7 @@ function FanficReader:onEndOfFic()
                         -- Reopen the work
                         FanficReader:show({
                             fanfic = self.current_fanfic,
-                            chapter_opening_at = nil,
+                            chapter_opening_at = -(ReaderUI.instance:getCurrentPage()),
                         })
                     end)
                     UIManager:show(InfoMessage:new({
@@ -567,8 +567,12 @@ function FanficReader:onReaderReady()
     if self.is_showing then
         UIManager:nextTick(function()
             if self.chapter_opening_at then
-                local toc = ReaderUI.instance.document:getToc()
-                UIManager:broadcastEvent(Event:new("GotoPage", toc[self.chapter_opening_at + 1].page))
+                if self.chapter_opening_at > 0 then
+                    local toc = ReaderUI.instance.document:getToc()
+                    UIManager:broadcastEvent(Event:new("GotoPage", toc[self.chapter_opening_at + 1].page))
+                else
+                    UIManager:broadcastEvent(Event:new("GotoPage", -(self.chapter_opening_at)))
+                end
             end
         end)
     end
