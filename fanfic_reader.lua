@@ -316,16 +316,57 @@ function FanficReader:onEndOfFic()
             {
                 text = "AO3 Downloader",
                 callback = function()
-
+                    UIManager:close(button_dialog)
+                    UIManager:broadcastEvent(Event:new("OpenAO3DownloaderMenu"))
                 end,
             },
         },
         {
             {
-                text = "Delete File",
+                text = "Delete",
                 callback = function()
+                    local confirmDialog
+                    -- Confirm deletion
+                    confirmDialog = ButtonDialog:new({
+                        title = "Are you sure you want to delete '"..self.current_fanfic.title.."'?",
+                        buttons = {
+                            {
+                                {
+                                    text = "Delete",
+                                    callback = function()
+                                        local success, err = util.removeFile(self.current_fanfic.path)
+                                        if success then
+                                            DownloadedFanfics.delete(self.current_fanfic.id)
+                                            UIManager:show(
+                                                InfoMessage:new({
+                                                    text = "'"..self.current_fanfic.title.."' has been deleted."
+                                                })
+                                            )
+                                            UIManager:close(confirmDialog)
+                                            
+                                            UIManager:broadcastEvent(Event:new("OpenAO3DownloaderMenu"))
+                                        else
+                                            UIManager:close(confirmDialog)
+                                            logger.err("Failed to delete file:", err)
+                                            UIManager:show(
+                                                InfoMessage:new({
+                                                    text = "Failed to delete file for '"..self.current_fanfic.title.."': "..err
+                                                })
+                                            )
+                                        end
+                                    end,
+                                },
+                                {
+                                    text = "Cancel",
+                                    callback = function()
+                                        UIManager:close(confirmDialog)
+                                    end,
+                                },
+                            },
+                        },
+                    })
+                    UIManager:show(confirmDialog)
                     UIManager:close(button_dialog)
-
                 end,
             },
             {
