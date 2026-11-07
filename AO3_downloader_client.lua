@@ -2937,7 +2937,7 @@ local function parseSetCookie(set_cookie_value)
             current_cookie = {}
             current_cookie["name"] = name
             current_cookie["value"] = value
-        elseif name then
+        elseif name and current_cookie then
             current_cookie[name] = value or true
         end
     end
@@ -3033,7 +3033,7 @@ function HTTPQueryHandler:performHTTPRequest(request, retries)
             headers = request.headers,
             sink = request.sink,
             source = request.source,
-            protocol = "tlsv1_3",
+            protocol = "any",
             options = "all",
         })
 
