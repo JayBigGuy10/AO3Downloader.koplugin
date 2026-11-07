@@ -1877,16 +1877,21 @@ function AO3WebParser:parseCollectionMeta(root)
     local titleElement = root:select("h3.heading span.title")[1]
     collection_meta.title = titleElement:getcontent():match("^%s*(.-)%s*$")
 
-    collection_meta.published = root:select("dl.meta dd")[1]:getcontent():match("^%s*(.-)%s*$")
+    local meta_group = root:select(".meta.group")[1]
+
+    collection_meta.published = meta_group:getcontent():match("%d%d%d%d%-%d%d%-%d%d")
 
     local author_table = {}
-    for _, li in ipairs(root:select("dd.maintainers li")) do
-        table.insert(author_table, li:select("a")[1]:getcontent():match("^%s*(.-)%s*$"))
+    for _, a in ipairs(meta_group:select("li > a")) do
+        table.insert(author_table, a:getcontent():match("^%s*(.-)%s*$"))
     end
     collection_meta.author = #author_table > 0 and table.concat(author_table, ", ") or ""
 
     local description_parts = {}
-    for _, p in ipairs(root:select("blockquote.userstuff p")) do
+
+    local desc_select = root:select(".primary > blockquote.userstuff > p")
+
+    for _, p in ipairs(desc_select) do
         table.insert(description_parts, p:getcontent():match("^%s*(.-)%s*$"))
     end
     collection_meta.summary = table.concat(description_parts, "\n")
