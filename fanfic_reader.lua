@@ -554,6 +554,9 @@ function FanficReader:addToMainMenu(menu_items)
 end
 
 function FanficReader:initializeFromReaderUI(ui)
+
+    self.ui = ui
+
     if self.is_showing then
         ui.menu:registerToMainMenu(FanficReader)
     end
