@@ -453,6 +453,8 @@ function AO3DownloaderClient:searchByFilter(filter, page_no)
     local page = page_no or 1 -- Default to the first page if no page is specified
     logger.dbg("AO3Downloader.koplugin: Executing work search by parameters. Page no: " .. tostring(page_no))
 
+    local searchURL = getAO3URL()
+
     local parameters = {}
     if filter.type == "works" then
         parameters = {
@@ -523,6 +525,7 @@ function AO3DownloaderClient:searchByFilter(filter, page_no)
     else
         return false, {error = "Invalid filter search type"}
     end
+
     if filter.main_tag then
         parameters["tag_id"] = filter.main_tag or nil
     elseif filter.user_id then
@@ -530,6 +533,8 @@ function AO3DownloaderClient:searchByFilter(filter, page_no)
         if filter.pseud_id then
             parameters["user_pseud"] = filter.pseud_id
         end
+    elseif filter.collection_id then
+        searchURL = searchURL .. "/collections/" .. filter.collection_id
     end
 
     -- Build the query string from the parameters
@@ -550,7 +555,7 @@ function AO3DownloaderClient:searchByFilter(filter, page_no)
     local queryString = table.concat(query, "&")
 
     -- Construct the full URL
-    local url = string.format("%s/%s?commit=Sort+and+Filter&%s", getAO3URL(), filter.type, queryString)
+    local url = string.format("%s/%s?commit=Sort+and+Filter&%s", searchURL, filter.type, queryString)
 
     local response_body = {}
 
@@ -564,7 +569,7 @@ function AO3DownloaderClient:searchByFilter(filter, page_no)
 
     if not response_result.success then
         return false, {
-            error = T("%1/works?commit=Sort+and+Filter&%2", getAO3URL(), queryString)
+            error = T("%1/works?commit=Sort+and+Filter&%2", searchURL, queryString)
         }
     end
 
