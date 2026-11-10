@@ -609,6 +609,11 @@ function AO3DownloaderClient:searchByFilter(filter, page_no)
         searchResult.count_suffix = "Works"
     end
 
+    if filter.collection_id and filter.type == "bookmarks" then
+        searchResult.title = "AO3 Collection"
+        searchResult.count_suffix = "Bookmarks"
+    end
+
     return true, searchResult
 end
 
@@ -1916,7 +1921,7 @@ function AO3WebParser:parseUserBookmarks(root)
         local resultsText = resultsCountElement:getcontent()
         local totalWorks = resultsText:match("of%s*([%d,]+)%s*Bookmarks")
         if not totalWorks then
-            totalWorks = resultsText:match("^%s*([%d,]+)%s*Bookmarks")
+            totalWorks = resultsText:match("^%s*([%d,]+)%s*Bookmark")
         end
         if totalWorks then
             searchResult.count = tonumber(totalWorks:gsub(",", ""),10)

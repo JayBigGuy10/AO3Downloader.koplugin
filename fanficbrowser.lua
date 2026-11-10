@@ -147,7 +147,7 @@ function FanficCardPage:_populateItems()
     end
 
     -- Nav bar update - identical to KeyValuePage._populateItems
-    if self.pages > 1 then
+    if self.pages >= 1 then
         if self.searchResult.cover_page and self.show_page == 1 then
             self.page_info_text:setText("Description")
         else
