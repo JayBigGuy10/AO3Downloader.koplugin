@@ -569,17 +569,15 @@ function FanficCardPage:buildCard(fanfic)
 
         -- Subcollections in a collection
         if fanfic.subcollections then
-            local series_full = fanfic.subcollections
-            local series_display = truncateToFit(series_full, stats_face, tag_line_height)
-            local collection_callback = nil
-            if self.searchByTagCallback then
-                collection_callback = function()
+            local full = fanfic.subcollections
+            local display = truncateToFit(full, stats_face, tag_line_height)
+            local callback = function()
                     -- todo open the collections list here
-                end
             end
-            addTappableField(series_display, series_full, stats_face, tag_line_height,collection_callback)
+            addTappableField(display, full, stats_face, tag_line_height,callback)
         end
 
+        -- Parent collection to a subcollection
         if fanfic.parent_collection then
             local series_full = "Parent Collection: "..fanfic.parent_collection
             local series_display = truncateToFit(series_full, stats_face, tag_line_height)
@@ -601,15 +599,12 @@ function FanficCardPage:buildCard(fanfic)
 
         -- Fandoms in a collection
         if fanfic.fandom_count then
-            local series_full = fanfic.fandom_count
-            local series_display = truncateToFit(series_full, stats_face, tag_line_height)
-            local collection_callback = nil
-            if self.searchByTagCallback then
-                collection_callback = function()
+            local full = fanfic.fandom_count
+            local display = truncateToFit(full, stats_face, tag_line_height)
+            local callback = function()
                     -- todo maybe open the fandoms list here
-                end
             end
-            addTappableField(series_display, series_full, stats_face, tag_line_height,collection_callback)
+            addTappableField(display, full, stats_face, tag_line_height,callback)
         end
 
         -- Bookmarked items in a collection
