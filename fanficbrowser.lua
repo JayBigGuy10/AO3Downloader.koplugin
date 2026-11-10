@@ -616,13 +616,21 @@ function FanficCardPage:buildCard(fanfic)
         if fanfic.bookmarked_items then
             local series_full = fanfic.bookmarked_items
             local series_display = truncateToFit(series_full, stats_face, tag_line_height)
-            local collection_callback = nil
-            if self.searchByTagCallback then
-                collection_callback = function()
-                    -- todo open the bookmarked items list here
-                end
+
+            local callback = function()
+                UIManager:scheduleIn(1, function()
+                    local status, searchResult = AO3Manager:getBookmarksFromCollection(self.searchResult.filter.collection_id)
+                    if not status then
+                        return
+                    end
+                    FanficBrowser:show(searchResult)
+                end)
+                UIManager:show(InfoMessage:new {
+                    text = _("Opening Collection Bookmarks: "),
+                    timeout = 1,
+                })
             end
-            addTappableField(series_display, series_full, stats_face, tag_line_height,collection_callback)
+            addTappableField(series_display, series_full, stats_face, tag_line_height, callback)
         end
 
         -- == SEPARATOR before summary ==
