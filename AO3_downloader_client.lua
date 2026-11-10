@@ -588,6 +588,27 @@ function AO3DownloaderClient:searchByFilter(filter, page_no)
     searchResult.parameters = parameters
     searchResult.count_suffix = "Results"
 
+    -- Grab collection metadata if searching a collection
+    if filter.collection_id and filter.type == "works" and page_no == 1 then
+        local meta_response_body = {}
+        local meta_request = {
+            url = T("%1/collections/%2/profile", getAO3URL(), filter.collection_id),
+            method = "GET",
+            sink = ltn12.sink.table(meta_response_body),
+        }
+        local meta_request_result = HTTPQueryHandler:performHTTPRequest(meta_request)
+        if not meta_request_result.success then
+            return false, {
+                error = T("Failed to fetch collection metadata. Status: %1", meta_request_result.status or "unknown error"),
+            }
+        end
+        local meta_root = htmlparser.parse(table.concat(meta_response_body))
+        searchResult.cover_page = AO3WebParser:parseCollectionMeta(meta_root)
+
+        searchResult.title = "AO3 Collection"
+        searchResult.count_suffix = "Works"
+    end
+
     return true, searchResult
 end
 
@@ -669,55 +690,6 @@ function AO3DownloaderClient:getWorksFromSeries(series_id, page_no)
     local searchResult = AO3WebParser:parseSeries(root, page_no==1)
 
     searchResult.title = "AO3 Series"
-    searchResult.count_suffix = "Works"
-
-    return true, searchResult
-end
-
-function AO3DownloaderClient:getWorksFromCollection(collection_id, page_no)
-    logger.dbg("AO3Downloader.koplugin: Fetching works from collection ID: " .. tostring(collection_id) .. ", page no: " .. tostring(page_no))
-    page_no = page_no or 1
-    local url = T("%1/collections/%2/works?page=%3", getAO3URL(), collection_id, page_no)
-
-    local response_body = {}
-    local request = {
-        url = url,
-        method = "GET",
-        sink = ltn12.sink.table(response_body),
-    }
-
-    local request_result = HTTPQueryHandler:performHTTPRequest(request)
-
-    if not request_result.success then
-        return false, {
-            error = T("Failed to fetch collection works. Status: %1", request_result.status or "unknown error"),
-        }
-    end
-
-    local html_body = table.concat(response_body)
-
-    local root = htmlparser.parse(html_body)
-
-    local searchResult = AO3WebParser:parseWorkSearchResults(root)
-
-    if page_no == 1 then
-        local meta_response_body = {}
-        local meta_request = {
-            url = T("%1/collections/%2/profile", getAO3URL(), collection_id),
-            method = "GET",
-            sink = ltn12.sink.table(meta_response_body),
-        }
-        local meta_request_result = HTTPQueryHandler:performHTTPRequest(meta_request)
-        if not meta_request_result.success then
-            return false, {
-                error = T("Failed to fetch collection metadata. Status: %1", meta_request_result.status or "unknown error"),
-            }
-        end
-        local meta_root = htmlparser.parse(table.concat(meta_response_body))
-        searchResult.cover_page = AO3WebParser:parseCollectionMeta(meta_root)
-    end
-
-    searchResult.title = "AO3 Collection"
     searchResult.count_suffix = "Works"
 
     return true, searchResult

@@ -564,43 +564,24 @@ function AO3Manager:getWorksFromSeries(series_id)
 end
 
 function AO3Manager:getWorksFromCollection(collection_id)
-    if not NetworkMgr:isConnected() then
-        NetworkMgr:runWhenConnected()
-        return false, {}
-    end
-    local status, searchResult = AO3DownloaderClient:getWorksFromCollection(collection_id)
-    if not status then
-        UIManager:show(InfoMessage:new{
-            text = "Error: Failed to fetch works from collection: " .. (searchResult.error or "Unknown error"),
-        })
-        return false
-    end
+    local filter = {
+        type = "works",
+        collection_id = collection_id
+    }
 
-    local currentpage = 1
+    local status, searchResult = AO3Manager:executeSearch(filter)
 
-    searchResult.fetchNextPage = function()
-        currentpage = currentpage + 1
-        local status, searchResult = AO3DownloaderClient:getWorksFromCollection(collection_id, currentpage)
-        if not status then
-            currentpage = currentpage - 1
-            UIManager:show(InfoMessage:new{
-                text = "Error: Failed to fetch works from collection: " .. (searchResult.error or "Unknown error"),
-            })
-            return {}
-        end
+    return status, searchResult
+end
 
-        -- no more works to fetch
-        if #searchResult.works == 0 then
-            currentpage = currentpage - 1
-            return {}
-        end
+function AO3Manager:getBookmarksFromCollection(collection_id)
+    local filter = {
+        type = "bookmarks",
+        collection_id = collection_id
+    }
+    local status, searchResult = AO3Manager:executeSearch(filter)
 
-        return  searchResult.works
-
-    end
-
-    return true, searchResult
-
+    return status, searchResult
 end
 
 function AO3Manager:searchForTags(query, type)
