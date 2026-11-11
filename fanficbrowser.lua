@@ -13,8 +13,12 @@ local T = FFIUtil.template
 
 local KeyValuePage = require("ui/widget/keyvaluepage")
 local TextBoxWidget = require("ui/widget/textboxwidget")
+local ImageWidget = require("ui/widget/imagewidget")
 local TextViewer = require("ui/widget/textviewer")
+local FrameContainer = require("ui/widget/container/framecontainer")
 local InputContainer = require("ui/widget/container/inputcontainer")
+local HorizontalGroup = require("ui/widget/horizontalgroup")
+local HorizontalSpan = require("ui/widget/horizontalspan")
 local VerticalGroup = require("ui/widget/verticalgroup")
 local VerticalSpan = require("ui/widget/verticalspan")
 local LineWidget = require("ui/widget/linewidget")
@@ -260,8 +264,8 @@ end
 function FanficCardPage:buildCard(fanfic)
     local content_width = self.item_width
 
-    local title_face = Font:getFace("tfont", 24)
-    local body_face = Font:getFace("cfont", 20)
+    local title_face = Font:getFace("tfont", 22)
+    local body_face = Font:getFace("cfont", 18)
     local stats_face = Font:getFace("ffont", 18)
 
     -- Normalize fields that may arrive as comma-separated strings
@@ -288,8 +292,8 @@ function FanficCardPage:buildCard(fanfic)
     -- rendered. Uses actual TextBoxWidget measurement so DPI scaling
     -- cannot cause silent clipping. Binary searches for the longest
     -- substring that fits so the ellipsis appears near the right edge.
-    local function truncateToFit(text, face, max_height)
-        local probe = TextBoxWidget:new{ text = text, face = face, width = content_width }
+    local function truncateToFit(text, face, max_height, width)
+        local probe = TextBoxWidget:new{ text = text, face = face, width = width or content_width }
         local actual_height = probe:getSize().h
         probe:free()
         if actual_height <= max_height then
@@ -304,7 +308,7 @@ function FanficCardPage:buildCard(fanfic)
             probe = TextBoxWidget:new{
                 text = text:sub(1, mid) .. "...",
                 face = face,
-                width = content_width,
+                width = width or content_width,
             }
             local fits = probe:getSize().h <= max_height
             probe:free()
@@ -351,34 +355,24 @@ function FanficCardPage:buildCard(fanfic)
         if fanfic.is_restricted then
             title_text = "🔒 " .. title_text
         end
-        if DownloadedFanfics.checkIfStored(fanfic.id) then
-            title_text = "✓ " .. title_text
-        end
     end
-    local title_line_height = TextBoxWidget:new{
-        text = "X",
-        face = title_face,
-        width = content_width,
-        bold = true,
-    }:getSize().h
 
-    local title_display = truncateToFit(title_text, title_face, title_line_height)
+    local title_width = content_width - Screen:scaleBySize(72) - Size.padding.small - Size.padding.default
 
-    -- Title tap: download dialog (new fic) or update/open (already downloaded).
     local title_widget = TextBoxWidget:new{
-        text = title_display,
+        text = title_text,
         face = title_face,
-        width = content_width,
-        height = title_line_height,
+        width = title_width,
         bold = true,
+        adjust_height = true
     }
-    if not fanfic.is_deleted then
-        addElement(self:makeTappable(title_widget, function()
-            self:onTitleTap(fanfic)
-        end))
-    else
-        addElement(title_widget)
-    end
+    -- if not fanfic.is_deleted then
+    --     addElement(self:makeTappable(title_widget, function()
+    --         self:onTitleTap(fanfic)
+    --     end))
+    -- else
+    --     addElement(title_widget)
+    -- end
 
     -- == AUTHOR LINE ==
     local author_text = "by " .. (fanfic.author or "Anonymous")
@@ -388,16 +382,82 @@ function FanficCardPage:buildCard(fanfic)
     local author_widget = TextBoxWidget:new{
         text = author_text,
         face = stats_face,
-        width = content_width,
+        width = title_width,
     }
-    -- Tap to show author profile. If multiple authors, shows a picker.
-    if fanfic.author then
-        addElement(self:makeTappable(author_widget, function()
-            self:onAuthorTap(fanfic)
-        end))
-    else
-        addElement(author_widget)
-    end
+
+    local saved_parts = {}
+    if DownloadedFanfics.checkIfStored(fanfic.id) then table.insert(saved_parts, "Downloaded: ✓") end
+    if fanfic.bookmarkID then table.insert(saved_parts, fanfic.bookmarkID and "Bookmarked: " .. ("Yes" or "No")) end
+    if fanfic.markedForLater then table.insert(saved_parts, fanfic.markedForLater and "Marked for Later: " .. ("Yes" or "No")) end
+    if fanfic.subscriptionID then table.insert(saved_parts, fanfic.subscriptionID and "Subscribed: " .. ("Yes" or "No")) end
+
+    local saved_parts_widget = TextBoxWidget:new{
+        text = table.concat(saved_parts, "   "),
+        face = stats_face,
+        width = title_width,
+    }
+
+    local title_group_widget = self:makeTappable(VerticalGroup:new {
+        title_widget,
+        author_widget,
+        saved_parts_widget
+    }, function()
+        self:onTitleTap(fanfic)
+    end)
+
+    local rating_paths = {
+        ["Not Rated"] = "plugins/AO3Downloader.koplugin/icons/rating-notrated.png",
+        ["General Audiences"] = "plugins/AO3Downloader.koplugin/icons/rating-general-audience.png",
+        ["Teen And Up Audiences"] = "plugins/AO3Downloader.koplugin/icons/rating-teen.png",
+        ["Mature"] = "plugins/AO3Downloader.koplugin/icons/rating-mature.png",
+        ["Explicit"] = "plugins/AO3Downloader.koplugin/icons/rating-explicit.png",
+    }
+
+    local warning_paths = {
+        ["Creator Chose Not To Use Archive Warnings"] = "plugins/AO3Downloader.koplugin/icons/warning-chosenotto.png",
+        ["External Work"] = "plugins/AO3Downloader.koplugin/icons/warning-external-work.png",
+        ["No Archive Warnings Apply"] = "plugins/AO3Downloader.koplugin/icons/warning-no.png",
+        ["Yes"] = "plugins/AO3Downloader.koplugin/icons/warning-yes.png",
+    }
+
+    addElement(HorizontalGroup:new {
+        align = "top",
+        VerticalGroup:new {
+            VerticalSpan:new { width = Size.padding.default },
+            ImageWidget:new {
+                file = rating_paths[fanfic.rating or "Not Rated"],
+                width = Screen:scaleBySize(36),
+                height = Screen:scaleBySize(36),
+                image_disposable = false
+            },
+            VerticalSpan:new { width = Size.padding.small },
+            ImageWidget:new {
+                file = warning_paths[#fanfic.warnings == 1 and fanfic.warnings[1] or #fanfic.warnings == 0 and "No Archive Warnings Apply" or "Yes"],
+                width = Screen:scaleBySize(36),
+                height = Screen:scaleBySize(36),
+                image_disposable = false
+            }
+        },
+        HorizontalSpan:new { width = Size.padding.small },
+        VerticalGroup:new {
+            VerticalSpan:new { width = Size.padding.default},
+            ImageWidget:new {
+                file = "icons/category-femslash.png",
+                width = Screen:scaleBySize(36),
+                height = Screen:scaleBySize(36),
+                image_disposable = false
+            },
+            VerticalSpan:new { width = Size.padding.small },
+            ImageWidget:new {
+                file = "icons/complete-yes.png",
+                width = Screen:scaleBySize(36),
+                height = Screen:scaleBySize(36),
+                image_disposable = false
+            }
+        },
+        HorizontalSpan:new { width = Size.padding.default },
+        title_group_widget
+    })
 
     addSpacing(Size.padding.small)
     addElement(LineWidget:new{
@@ -409,69 +469,62 @@ function FanficCardPage:buildCard(fanfic)
     if not fanfic.is_deleted then
 
         local document_parts = {}
+
+        if fanfic.language then
+            table.insert(document_parts, fanfic.language)
+        end
+
         if fanfic.wordcount then
             table.insert(document_parts, "Words: " .. formatNumber(fanfic.wordcount))
         end
         if fanfic.chapters then
-            table.insert(document_parts, fanfic.chapters .. " Chapters")
+            table.insert(document_parts, "Chapters: " .. fanfic.chapters)
         end
-        table.insert(document_parts, fanfic.iswip or "Unknown")
+
+        -- table.insert(document_parts, fanfic.iswip or "Unknown")
         addElement(TextBoxWidget:new{
-            text = table.concat(document_parts, " | "),
+            text = table.concat(document_parts, "   "),
             face = stats_face,
             width = content_width,
         })
 
         -- == STATS ==
-        local stats_parts = {}
-        if fanfic.rating then
-            local short_ratings = {
-                ["Not Rated"] = "None",
-                ["General Audiences"] = "General",
-                ["Teen And Up Audiences"] = "Teen",
-                ["Mature"] = "Mature",
-                ["Explicit"] = "Explicit",
-            }
-            table.insert(stats_parts, "Rating: " .. (short_ratings[fanfic.rating] or fanfic.rating))
-        end
-        if fanfic.language then
-            table.insert(stats_parts, fanfic.language)
-        end
-        if fanfic.published then
-            table.insert(stats_parts, "\u{f093} " .. fanfic.published)
-        end
-        if fanfic.updated then
-            table.insert(stats_parts, "\u{f040} " .. fanfic.updated)
-        end
-        addElement(TextBoxWidget:new{
-            text = table.concat(stats_parts, " | "),
-            face = stats_face,
-            width = content_width,
-        })
+        -- local stats_parts = {}
+        -- if fanfic.rating then
+        --     local short_ratings = {
+        --         ["Not Rated"] = "None",
+        --         ["General Audiences"] = "General",
+        --         ["Teen And Up Audiences"] = "Teen",
+        --         ["Mature"] = "Mature",
+        --         ["Explicit"] = "Explicit",
+        --     }
+        --     table.insert(stats_parts, "Rating: " .. (short_ratings[fanfic.rating] or fanfic.rating))
+        -- end
+
+        
+        -- addElement(TextBoxWidget:new{
+        --     text = table.concat(stats_parts, " | "),
+        --     face = stats_face,
+        --     width = content_width,
+        -- })
 
         local engagement_parts = {}
+
         if fanfic.comments then table.insert(engagement_parts, "\u{f075} " .. formatNumber(fanfic.comments)) end
         if fanfic.kudos then table.insert(engagement_parts, "♥ " .. formatNumber(fanfic.kudos)) end
 
         if fanfic.bookmarks then table.insert(engagement_parts, "\u{f02e} " .. formatNumber(fanfic.bookmarks)) end
         if fanfic.hits then table.insert(engagement_parts, "\u{f080}  " .. formatNumber(fanfic.hits)) end
+
+        if fanfic.updated then
+            table.insert(engagement_parts, "\u{f040} " .. fanfic.updated)
+        elseif fanfic.published then
+            table.insert(engagement_parts, "\u{f093} " .. fanfic.published)
+        end
         
         if #engagement_parts > 0 then
             addElement(TextBoxWidget:new{
-                text = table.concat(engagement_parts, " | "),
-                face = stats_face,
-                width = content_width,
-            })
-        end
-
-        local saved_parts = {}
-        if fanfic.bookmarkID then table.insert(saved_parts, fanfic.bookmarkID and "Bookmarked: " .. (("Yes (" .. tostring(fanfic.bookmarkID) ..")") or "No")) end
-        if fanfic.markedForLater then table.insert(saved_parts, fanfic.markedForLater and "Marked for Later: " .. ("Yes" or "No")) end
-        if fanfic.subscriptionID then table.insert(saved_parts, fanfic.subscriptionID and "Subscribed: " .. (("Yes (" .. fanfic.subscriptionID ..")") or "No")) end
-
-        if #saved_parts > 0 then
-            addElement(TextBoxWidget:new{
-                text = table.concat(saved_parts, " | "),
+                text = table.concat(engagement_parts, "   "),
                 face = stats_face,
                 width = content_width,
             })
@@ -495,7 +548,7 @@ function FanficCardPage:buildCard(fanfic)
 
         -- Fandom - tap to search by fandom tag
         if #fanfic.fandoms > 0 then 
-            local fandom_full = "Fandom: " .. table.concat(fanfic.fandoms, ", ")
+            local fandom_full = table.concat(fanfic.fandoms, ", ")
             local fandom_display = truncateToFit(fandom_full, stats_face, tag_line_height)
             local fandom_callback = nil
             if #fanfic.fandoms > 0 and self.searchByTagCallback then
@@ -507,15 +560,15 @@ function FanficCardPage:buildCard(fanfic)
         end
 
         -- Warnings - display only, tap to expand if truncated
-        if #fanfic.warnings > 0 then
-            local warnings_full = "Warnings: " .. table.concat(fanfic.warnings, ", ")
+        if #fanfic.warnings > 1 then
+            local warnings_full = table.concat(fanfic.warnings, ", ")
             local warnings_display = truncateToFit(warnings_full, stats_face, tag_line_height)
             addTappableField(warnings_display, warnings_full, stats_face, tag_line_height)
         end
 
         -- Relationships - tap to search by relationship tag
         if fanfic.category or #fanfic.relationships > 0 then
-            local rel_full = "Relationships: "
+            local rel_full = ""
             if fanfic.category and fanfic.category ~= "" then
                 rel_full = rel_full .. "(" .. fanfic.category .. ") "
             end
@@ -532,7 +585,7 @@ function FanficCardPage:buildCard(fanfic)
 
         -- Characters - tap to search by character tag
         if #fanfic.characters > 0 then
-            local char_full = "Characters: " .. table.concat(fanfic.characters, ", ")
+            local char_full = table.concat(fanfic.characters, ", ")
             local char_display = truncateToFit(char_full, stats_face, tag_line_height)
             local char_callback = nil
             if self.searchByTagCallback then
@@ -545,9 +598,9 @@ function FanficCardPage:buildCard(fanfic)
 
         -- Tags - tap to expand if truncated, no search
         if #fanfic.tags > 0 then
-            local tags_full = "Tags: " .. table.concat(fanfic.tags, ", ")
-            local tags_display = truncateToFit(tags_full, stats_face, tag_line_height)
-            addTappableField(tags_display, tags_full, stats_face, tag_line_height)
+            local tags_full = table.concat(fanfic.tags, ", ")
+            local tags_display = truncateToFit(tags_full, stats_face, tag_line_height*2, content_width)
+            addTappableField(tags_display, tags_full, stats_face, tag_line_height*2)
         end
 
         -- Series
@@ -655,11 +708,25 @@ function FanficCardPage:buildCard(fanfic)
         table.insert(card_content, elem)
     end
 
-    return card_content
+    return FrameContainer:new{
+        bordersize = 0,
+        radius = 0,
+        padding = 0,
+        padding_top = -Size.padding.large,
+        margin = 0,
+        card_content,
+    }
 end
 
 -- Title tap: show download dialog for new fics, or update/open for downloaded ones.
 function FanficCardPage:onTitleTap(fanfic)
+
+    -- Download or Update / Open
+    -- Go to author / authors
+    -- Bookmark
+    -- Subscribe
+    -- Mark for later
+
     if fanfic.id == nil then
         return
     end
