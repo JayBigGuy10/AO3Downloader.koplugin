@@ -420,6 +420,13 @@ function FanficCardPage:buildCard(fanfic)
         ["Yes"] = "plugins/AO3Downloader.koplugin/icons/warning-yes.png",
     }
 
+    local complete_paths = {
+        ["Complete"] = "plugins/AO3Downloader.koplugin/icons/complete-yes.png",
+        ["Complete Work"] = "plugins/AO3Downloader.koplugin/icons/complete-yes.png",
+        ["Work in Progress"] = "plugins/AO3Downloader.koplugin/icons/complete-no.png",
+        ["N/A"] = "plugins/AO3Downloader.koplugin/icons/warning-no.png"
+    }
+
     addElement(HorizontalGroup:new {
         align = "top",
         VerticalGroup:new {
@@ -449,7 +456,7 @@ function FanficCardPage:buildCard(fanfic)
             },
             VerticalSpan:new { width = Size.padding.small },
             ImageWidget:new {
-                file = "icons/complete-yes.png",
+                file = complete_paths[fanfic.iswip] or complete_paths["N/A"],
                 width = Screen:scaleBySize(36),
                 height = Screen:scaleBySize(36),
                 image_disposable = false
