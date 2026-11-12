@@ -79,7 +79,7 @@ function encodeHelper:parseFromHTML(str)
     return encodeHelper:parseToCodepoints(
                     str
                         :gsub("<br%s*/?>", "\n") -- Replace <br> tags with new lines
-                        :gsub("</p>", "\n\n") -- Add double new lines for paragraph breaks
+                        :gsub("</p>", "\n") -- Add new lines for paragraph breaks
                         :gsub("<[^>]+>", "") -- Remove other HTML tags
                         :gsub("^%s*(.-)%s*$", "%1") -- Trim whitespace
                 )
