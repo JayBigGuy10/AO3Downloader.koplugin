@@ -321,6 +321,52 @@ function FanficCardPage:buildCard(fanfic)
         return text:sub(1, lo) .. "..."
     end
 
+    local function truncateToFitLines(text, face, max_lines, width)
+        width = width or content_width
+
+        -- Determine actual single-line height using KOReader's layout.
+        local probe = TextBoxWidget:new{
+            text = "Ag",
+            face = face,
+            width = width,
+        }
+        local line_height = probe:getSize().h
+        probe:free()
+
+        local max_height = line_height * max_lines
+
+        local function fits(str)
+            local widget = TextBoxWidget:new{
+                text = str,
+                face = face,
+                width = width,
+            }
+            local height = widget:getSize().h
+            widget:free()
+            return height <= max_height
+        end
+
+        if fits(text) then
+            return text
+        end
+
+        -- Binary search for the longest substring that fits with "...".
+        local lo = 0
+        local hi = #text
+
+        while lo < hi do
+            local mid = math.ceil((lo + hi) / 2)
+
+            if fits(text:sub(1, mid) .. "...") then
+                lo = mid
+            else
+                hi = mid - 1
+            end
+        end
+
+        return text:sub(1, lo) .. "..."
+    end
+
     -- Build a tappable single-line text element. If the full text was
     -- truncated, tapping expands it in a TextViewer popup.
     local function addTappableField(display_text, full_text, face, height, tap_callback)
@@ -391,12 +437,15 @@ function FanficCardPage:buildCard(fanfic)
     if fanfic.markedForLater then table.insert(saved_parts, fanfic.markedForLater and "Marked for Later: " .. ("Yes" or "No")) end
     if fanfic.subscriptionID then table.insert(saved_parts, fanfic.subscriptionID and "Subscribed: " .. ("Yes" or "No")) end
 
-    local saved_parts_widget = TextBoxWidget:new{
-        text = table.concat(saved_parts, "   "),
-        face = stats_face,
-        width = title_width,
-    }
-
+    local saved_parts_widget = nil
+    if #saved_parts > 0 then
+        saved_parts_widget = TextBoxWidget:new{
+            text = table.concat(saved_parts, "   "),
+            face = stats_face,
+            width = title_width,
+        }
+    end
+   
     local title_group_widget = self:makeTappable(VerticalGroup:new {
         title_widget,
         author_widget,
@@ -427,6 +476,22 @@ function FanficCardPage:buildCard(fanfic)
         ["N/A"] = "plugins/AO3Downloader.koplugin/icons/warning-no.png"
     }
 
+    local category_paths = {
+        ["f/m"] = "plugins/AO3Downloader.koplugin/icons/category-het.png",
+        ["m/f"] = "plugins/AO3Downloader.koplugin/icons/category-het.png",
+        ["het"] = "plugins/AO3Downloader.koplugin/icons/category-het.png",
+        ["m/m"] = "plugins/AO3Downloader.koplugin/icons/category-slash.png",
+        ["slash"] = "plugins/AO3Downloader.koplugin/icons/category-slash.png",
+        ["f/f"] = "plugins/AO3Downloader.koplugin/icons/category-femslash.png",
+        ["femslash"] = "plugins/AO3Downloader.koplugin/icons/category-femslash.png",
+        ["gen"] = "plugins/AO3Downloader.koplugin/icons/category-gen.png",
+        ["multi"] = "plugins/AO3Downloader.koplugin/icons/category-multi.png",
+        ["other"] = "plugins/AO3Downloader.koplugin/icons/category-other.png",
+        ["none"] = "plugins/AO3Downloader.koplugin/icons/category-none.png",
+        ["N/A"] = "plugins/AO3Downloader.koplugin/icons/category-none.png",
+    }
+
+    -- Icons, title, author and saved status
     addElement(HorizontalGroup:new {
         align = "top",
         VerticalGroup:new {
@@ -443,13 +508,14 @@ function FanficCardPage:buildCard(fanfic)
                 width = Screen:scaleBySize(36),
                 height = Screen:scaleBySize(36),
                 image_disposable = false
-            }
+            },
+            VerticalSpan:new { width = Size.padding.default},
         },
         HorizontalSpan:new { width = Size.padding.small },
         VerticalGroup:new {
             VerticalSpan:new { width = Size.padding.default},
             ImageWidget:new {
-                file = "icons/category-femslash.png",
+                file = fanfic.category and (category_paths[fanfic.category:lower()] or category_paths["other"]) or category_paths["none"],
                 width = Screen:scaleBySize(36),
                 height = Screen:scaleBySize(36),
                 image_disposable = false
@@ -460,7 +526,8 @@ function FanficCardPage:buildCard(fanfic)
                 width = Screen:scaleBySize(36),
                 height = Screen:scaleBySize(36),
                 image_disposable = false
-            }
+            },
+            VerticalSpan:new { width = Size.padding.default},
         },
         HorizontalSpan:new { width = Size.padding.default },
         title_group_widget
@@ -508,13 +575,6 @@ function FanficCardPage:buildCard(fanfic)
         --     table.insert(stats_parts, "Rating: " .. (short_ratings[fanfic.rating] or fanfic.rating))
         -- end
 
-        
-        -- addElement(TextBoxWidget:new{
-        --     text = table.concat(stats_parts, " | "),
-        --     face = stats_face,
-        --     width = content_width,
-        -- })
-
         local engagement_parts = {}
 
         if fanfic.comments then table.insert(engagement_parts, "\u{f075} " .. formatNumber(fanfic.comments)) end
@@ -523,7 +583,7 @@ function FanficCardPage:buildCard(fanfic)
         if fanfic.bookmarks then table.insert(engagement_parts, "\u{f02e} " .. formatNumber(fanfic.bookmarks)) end
         if fanfic.hits then table.insert(engagement_parts, "\u{f080}  " .. formatNumber(fanfic.hits)) end
 
-        if fanfic.updated then
+        if fanfic.updated and fanfic.updated ~= "Unknown date" then
             table.insert(engagement_parts, "\u{f040} " .. fanfic.updated)
         elseif fanfic.published then
             table.insert(engagement_parts, "\u{f093} " .. fanfic.published)
@@ -553,61 +613,65 @@ function FanficCardPage:buildCard(fanfic)
             width = content_width,
         }:getSize().h
 
-        -- Fandom - tap to search by fandom tag
+        local tag_section_widget = VerticalGroup:new{}
+
+        -- Fandom
         if #fanfic.fandoms > 0 then 
             local fandom_full = table.concat(fanfic.fandoms, ", ")
-            local fandom_display = truncateToFit(fandom_full, stats_face, tag_line_height)
-            local fandom_callback = nil
-            if #fanfic.fandoms > 0 and self.searchByTagCallback then
-                fandom_callback = function()
-                    self:onTagFieldTap(fanfic.fandoms, "Fandom", fandom_full)
-                end
-            end
-            addTappableField(fandom_display, fandom_full, stats_face, tag_line_height, fandom_callback)
+            local fandom_display = truncateToFitLines(fandom_full, stats_face, 3, content_width)
+            table.insert(tag_section_widget, TextBoxWidget:new{
+                text = fandom_display,
+                face = stats_face,
+                width = content_width,
+            })
         end
 
-        -- Warnings - display only, tap to expand if truncated
+        -- Warnings
         if #fanfic.warnings > 1 then
             local warnings_full = table.concat(fanfic.warnings, ", ")
-            local warnings_display = truncateToFit(warnings_full, stats_face, tag_line_height)
-            addTappableField(warnings_display, warnings_full, stats_face, tag_line_height)
+            local warnings_display = truncateToFitLines(warnings_full, stats_face, 3, content_width)
+            table.insert(tag_section_widget, TextBoxWidget:new{
+                text = warnings_display,
+                face = stats_face,
+                width = content_width,
+            })
         end
 
-        -- Relationships - tap to search by relationship tag
+        -- Relationships
         if fanfic.category or #fanfic.relationships > 0 then
             local rel_full = ""
             if fanfic.category and fanfic.category ~= "" then
                 rel_full = rel_full .. "(" .. fanfic.category .. ") "
             end
-            rel_full = rel_full .. (#fanfic.relationships > 0 and table.concat(fanfic.relationships, ", ") or "None listed")
-            local rel_display = truncateToFit(rel_full, stats_face, tag_line_height)
-            local rel_callback = nil
-            if #fanfic.relationships > 0 and self.searchByTagCallback then
-                rel_callback = function()
-                    self:onTagFieldTap(fanfic.relationships, "Relationship", rel_full)
-                end
-            end
-            addTappableField(rel_display, rel_full, stats_face, tag_line_height, rel_callback)
+            rel_full = rel_full .. (#fanfic.relationships > 0 and table.concat(fanfic.relationships, ", ") or "")
+            local rel_display = truncateToFitLines(rel_full, stats_face, 3, content_width)
+            table.insert(tag_section_widget, TextBoxWidget:new{
+                text = rel_display,
+                face = stats_face,
+                width = content_width,
+            })
         end 
 
-        -- Characters - tap to search by character tag
+        -- Characters
         if #fanfic.characters > 0 then
             local char_full = table.concat(fanfic.characters, ", ")
-            local char_display = truncateToFit(char_full, stats_face, tag_line_height)
-            local char_callback = nil
-            if self.searchByTagCallback then
-                char_callback = function()
-                    self:onTagFieldTap(fanfic.characters, "Character", char_full)
-                end
-            end
-            addTappableField(char_display, char_full, stats_face, tag_line_height, char_callback)
+            local char_display = truncateToFitLines(char_full, stats_face, 3, content_width)
+            table.insert(tag_section_widget, TextBoxWidget:new{
+                text = char_display,
+                face = stats_face,
+                width = content_width,
+            })
         end
 
-        -- Tags - tap to expand if truncated, no search
+        -- Tags
         if #fanfic.tags > 0 then
             local tags_full = table.concat(fanfic.tags, ", ")
-            local tags_display = truncateToFit(tags_full, stats_face, tag_line_height*2, content_width)
-            addTappableField(tags_display, tags_full, stats_face, tag_line_height*2)
+            local tags_display = truncateToFitLines(tags_full, stats_face, 3, content_width)
+            table.insert(tag_section_widget, TextBoxWidget:new{
+                text = tags_display,
+                face = stats_face,
+                width = content_width,
+            })
         end
 
         -- Series
@@ -616,16 +680,18 @@ function FanficCardPage:buildCard(fanfic)
             for _, s in ipairs(fanfic.series) do
                 table.insert(parts, ("Part %s of %s"):format(s.part, s.title))
             end
-            local series_full = "Series: " .. table.concat(parts, ", ")
+            local series_full = table.concat(parts, ", ")
             local series_display = truncateToFit(series_full, stats_face, tag_line_height)
-            local series_callback = nil
-            if self.searchByTagCallback then
-                series_callback = function()
-                    self:onSeriesFieldTap(fanfic.series, series_full)
-                end
-            end
-            addTappableField(series_display, series_full, stats_face, tag_line_height,series_callback)
+            table.insert(tag_section_widget, TextBoxWidget:new{
+                text = series_display,
+                face = stats_face,
+                width = content_width,
+            })
         end
+
+        addElement(self:makeTappable(tag_section_widget,function()
+            self:onTagTap(fanfic)
+        end))
 
         -- Subcollections in a collection
         if fanfic.subcollections then
@@ -788,6 +854,58 @@ function FanficCardPage:onTitleTap(fanfic)
     end
 end
 
+function FanficCardPage:onTagTap(fanfic)
+    local buttons = {
+        {
+            {
+                text = fanfic.fandoms[1],
+                callback = function()
+                    UIManager:close(self._picker_dialog)
+                end,
+            },
+            {
+                text = _("View all"),
+                callback = function()
+                    UIManager:close(self._picker_dialog)
+                end,
+            }
+        },
+        {
+            {
+                text = fanfic.relationships[1],
+                callback = function()
+                    UIManager:close(self._picker_dialog)
+                end,
+            },
+            {
+                text = _("View all"),
+                callback = function()
+                    UIManager:close(self._picker_dialog)
+                end,
+            }
+        },
+        {
+            {
+                text = fanfic.characters[1],
+                callback = function()
+                    UIManager:close(self._picker_dialog)
+                end,
+            },
+            {
+                text = _("View all"),
+                callback = function()
+                    UIManager:close(self._picker_dialog)
+                end,
+            }
+        },
+    }
+    self._picker_dialog = ButtonDialog:new {
+        title = "Tags",
+        buttons = buttons,
+    }
+    UIManager:show(self._picker_dialog)
+end
+
 -- Author tap: show author profile. If multiple authors or a giftee exists,
 -- show a picker so the user can choose which profile to view.
 function FanficCardPage:onAuthorTap(fanfic)
@@ -826,15 +944,6 @@ function FanficCardPage:onTagFieldTap(values, category, full_text)
     elseif #values > 1 then
         -- Build buttons: each value searches, plus an expand option
         local buttons = {}
-        for _, value in ipairs(values) do
-            table.insert(buttons, {{
-                text = value,
-                callback = function()
-                    UIManager:close(self._picker_dialog)
-                    self.searchByTagCallback(value)
-                end,
-            }})
-        end
         table.insert(buttons, {{
             text = _("View all"),
             callback = function()
@@ -844,13 +953,21 @@ function FanficCardPage:onTagFieldTap(values, category, full_text)
                     text = full_text,
                 })
             end,
-        }})
-        table.insert(buttons, {{
+        },{
             text = _("Close"),
             callback = function()
                 UIManager:close(self._picker_dialog)
             end,
         }})
+        for _, value in ipairs(values) do
+            table.insert(buttons, {{
+                text = value,
+                callback = function()
+                    UIManager:close(self._picker_dialog)
+                    self.searchByTagCallback(value)
+                end,
+            }})
+        end
         self._picker_dialog = ButtonDialog:new{
             title = T("Search by %1", category),
             buttons = buttons,
