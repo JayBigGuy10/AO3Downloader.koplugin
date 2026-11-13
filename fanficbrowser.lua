@@ -62,6 +62,31 @@ local function formatNumber(n)
     return result
 end
 
+-- Wrap a widget in an InputContainer that fires callback on tap.
+-- The widget must already have a size so the gesture range can be set.
+local function makeTappable(widget, callback)
+    local size = widget:getSize()
+    local container = InputContainer:new{
+        dimen = Geom:new{ w = size.w, h = size.h },
+        widget,
+    }
+    if Device:isTouchDevice() then
+        container.ges_events = {
+            Tap = {
+                GestureRange:new{
+                    ges = "tap",
+                    range = container.dimen,
+                },
+            },
+        }
+        container.onTap = function()
+            callback()
+            return true
+        end
+    end
+    return container
+end
+
 -- Card page widget extending KeyValuePage. Inherits the nav bar, title bar,
 -- gesture handling, keyboard support, and screen refresh logic. Only the
 -- content area rendering is customized to show one fanfic card per page.
@@ -206,36 +231,39 @@ function FanficCardPage:update(filter)
     return searchResult
 end
 
--- Wrap a widget in an InputContainer that fires callback on tap.
--- The widget must already have a size so the gesture range can be set.
-function FanficCardPage:makeTappable(widget, callback)
-    local size = widget:getSize()
-    local container = InputContainer:new{
-        dimen = Geom:new{ w = size.w, h = size.h },
-        widget,
-    }
-    if Device:isTouchDevice() then
-        container.ges_events = {
-            Tap = {
-                GestureRange:new{
-                    ges = "tap",
-                    range = container.dimen,
-                },
-            },
-        }
-        container.onTap = function()
-            callback()
-            return true
+-- Show a dialog listing values in buttons with callbacks. 
+-- Used for authors, fandoms, relationships, and characters.
+function FanficCardPage:showPickerDialog(category, values, callback)
+
+    if callback == nil then
+        callback = function(value)
+            UIManager:close(self._picker_dialog)
+            if category == "Series" then
+                self.openSeriesCallback(value)
+                return
+            end
+            self.searchByTagCallback(value)
         end
     end
-    return container
-end
 
--- Show a disambiguation dialog listing multiple values. Tapping a value
--- triggers the given callback with that value. Used for authors, fandoms,
--- relationships, and characters.
-function FanficCardPage:showPickerDialog(title, values, callback)
     local buttons = {}
+
+    table.insert(buttons, {{
+        text = _("View Text"),
+        callback = function()
+            UIManager:close(self._picker_dialog)
+            UIManager:show(TextViewer:new{
+                title = category,
+                text = table.concat(values, ", "),
+            })
+        end,
+    },{
+        text = _("Close"),
+        callback = function()
+            UIManager:close(self._picker_dialog)
+        end,
+    }})
+
     for _, value in ipairs(values) do
         table.insert(buttons, {{
             text = value,
@@ -245,14 +273,9 @@ function FanficCardPage:showPickerDialog(title, values, callback)
             end,
         }})
     end
-    table.insert(buttons, {{
-        text = _("Close"),
-        callback = function()
-            UIManager:close(self._picker_dialog)
-        end,
-    }})
+
     self._picker_dialog = ButtonDialog:new{
-        title = title,
+        title = T("Search by %1", category),
         buttons = buttons,
     }
     UIManager:show(self._picker_dialog)
@@ -377,10 +400,10 @@ function FanficCardPage:buildCard(fanfic)
             height = height,
         }
         if tap_callback then
-            addElement(self:makeTappable(widget, tap_callback))
+            addElement(makeTappable(widget, tap_callback))
         elseif display_text ~= full_text then
             -- Text was truncated, tap to expand in a popup
-            addElement(self:makeTappable(widget, function()
+            addElement(makeTappable(widget, function()
                 UIManager:show(TextViewer:new{
                     title = _("Full text"),
                     text = full_text,
@@ -413,7 +436,7 @@ function FanficCardPage:buildCard(fanfic)
         adjust_height = true
     }
     -- if not fanfic.is_deleted then
-    --     addElement(self:makeTappable(title_widget, function()
+    --     addElement(makeTappable(title_widget, function()
     --         self:onTitleTap(fanfic)
     --     end))
     -- else
@@ -446,7 +469,7 @@ function FanficCardPage:buildCard(fanfic)
         }
     end
    
-    local title_group_widget = self:makeTappable(VerticalGroup:new {
+    local title_group_widget = makeTappable(VerticalGroup:new {
         title_widget,
         author_widget,
         saved_parts_widget
@@ -689,7 +712,7 @@ function FanficCardPage:buildCard(fanfic)
             })
         end
 
-        addElement(self:makeTappable(tag_section_widget,function()
+        addElement(makeTappable(tag_section_widget,function()
             self:onTagTap(fanfic)
         end))
 
@@ -791,67 +814,90 @@ function FanficCardPage:buildCard(fanfic)
     }
 end
 
--- Title tap: show download dialog for new fics, or update/open for downloaded ones.
+-- Actions when tapping the title area to the right of the icons
+--   Download or Update / Open
+--   Go to author / authors
+--   Bookmark / Mark for later
+--   Calcel / Subscribe
 function FanficCardPage:onTitleTap(fanfic)
-
-    -- Download or Update / Open
-    -- Go to author / authors
-    -- Bookmark
-    -- Subscribe
-    -- Mark for later
-
     if fanfic.id == nil then
         return
     end
     local downloaded = DownloadedFanfics.checkIfStored(fanfic.id)
-    if downloaded then
-        local dialog
-        dialog = ButtonDialog:new{
-            title = _("Fanfic is already downloaded, what would you like to do?"),
-            buttons = {
+    local dialog
+    dialog = ButtonDialog:new {
+        title = T("Actions for: %1 by %2", fanfic.title, fanfic.author or "Anonymous"),
+        buttons = {
+            downloaded and {
                 {
-                    {
-                        text = _("Update"),
-                        callback = function()
-                            UIManager:close(dialog)
-                            UIManager:scheduleIn(1, function()
-                                AO3Manager:UpdateFanfic(downloaded)
-                            end)
-                            UIManager:show(InfoMessage:new{
-                                text = _("Downloading work may take some time."),
-                                timeout = 1,
-                            })
-                        end,
-                    },
-                    {
-                        text = _("Open"),
-                        callback = function()
-                            UIManager:close(dialog)
-                            FanficReader:show({
-                                fanfic = downloaded,
-                                chapter_opening_at = nil,
-                            })
-                        end,
-                    },
-                    {
-                        text = _("Cancel"),
-                        callback = function()
-                            UIManager:close(dialog)
-                        end,
-                    },
+                    text = _("Update"),
+                    callback = function()
+                        UIManager:close(dialog)
+                        UIManager:scheduleIn(1, function()
+                            AO3Manager:UpdateFanfic(downloaded)
+                        end)
+                        UIManager:show(InfoMessage:new {
+                            text = _("Downloading work may take some time."),
+                            timeout = 1,
+                        })
+                    end,
                 },
+                {
+                    text = _("Open"),
+                    callback = function()
+                        UIManager:close(dialog)
+                        FanficReader:show({
+                            fanfic = downloaded,
+                            chapter_opening_at = nil,
+                        })
+                    end,
+                },
+            } or {
+                {
+                    text = "Download",
+                    callback = function()
+                        if Config:readSetting("show_adult_warning")
+                            and (fanfic.rating == "Explicit" or fanfic.rating == "Mature" or fanfic.rating == "Not Rated")
+                        then
+                            local warningDialog
+                            warningDialog = ButtonDialog:new({
+                                title =
+                                "This work could have adult content. If you continue, you have agreed that you are willing to see such content",
+                                buttons = {
+                                    {
+                                        {
+                                            text = "Cancel",
+                                            callback = function()
+                                                UIManager:close(warningDialog)
+                                            end,
+                                        },
+                                        {
+                                            text = "Download",
+                                            callback = function()
+                                                UIManager:close(warningDialog)
+                                                self:showDownloadDialog(fanfic)
+                                            end,
+                                        },
+                                    },
+                                },
+                            })
+                            UIManager:show(warningDialog)
+                        else
+                            FanficBrowser:showDownloadDialog(fanfic)
+                        end
+                    end,
+                }
+            },{
+                {text = "Bookmark"},
+                {text = "Mark for later"}
             },
-        }
-        UIManager:show(dialog)
-    else
-        if Config:readSetting("show_adult_warning")
-            and (fanfic.rating == "Explicit" or fanfic.rating == "Mature" or fanfic.rating == "Not Rated")
-        then
-            FanficBrowser:showAdultWarningDialog(fanfic)
-        else
-            FanficBrowser:showDownloadDialog(fanfic)
-        end
-    end
+            {
+                {text="Cancel"},
+                {text="Subscribe"}
+            }
+        },
+    }
+    UIManager:show(dialog)
 end
 
 function FanficCardPage:onTagTap(fanfic)
@@ -864,9 +910,10 @@ function FanficCardPage:onTagTap(fanfic)
                 end,
             },
             {
-                text = _("View all"),
+                text = _("All Fandoms"),
                 callback = function()
                     UIManager:close(self._picker_dialog)
+                    self:showPickerDialog("Fandom",fanfic.fandoms)
                 end,
             }
         },
@@ -878,9 +925,10 @@ function FanficCardPage:onTagTap(fanfic)
                 end,
             },
             {
-                text = _("View all"),
+                text = _("All Relationships"),
                 callback = function()
                     UIManager:close(self._picker_dialog)
+                    self:showPickerDialog("Relationship",fanfic.relationships)
                 end,
             }
         },
@@ -892,15 +940,45 @@ function FanficCardPage:onTagTap(fanfic)
                 end,
             },
             {
-                text = _("View all"),
+                text = _("All Characters"),
+                callback = function()
+                    UIManager:close(self._picker_dialog)
+                    self:showPickerDialog("Charecter",fanfic.characters)
+                end,
+            }
+        },
+        {
+            -- {
+            --     text = fanfic.tags[1],
+            --     callback = function()
+            --         UIManager:close(self._picker_dialog)
+            --     end,
+            -- },
+            {
+                text = _("Freeform Tags"),
                 callback = function()
                     UIManager:close(self._picker_dialog)
                 end,
             }
         },
+        #fanfic.series > 0 and {
+         {
+                text = fanfic.series[1],
+                callback = function()
+                    UIManager:close(self._picker_dialog)
+                end,
+            },
+            {
+                text = _("All Series"),
+                callback = function()
+                    UIManager:close(self._picker_dialog)
+                    self:showPickerDialog("Series",fanfic.series)
+                end,
+            }
+        } or nil,
     }
     self._picker_dialog = ButtonDialog:new {
-        title = "Tags",
+        title = "Tag options",
         buttons = buttons,
     }
     UIManager:show(self._picker_dialog)
@@ -925,7 +1003,7 @@ function FanficCardPage:onAuthorTap(fanfic)
         self.showAuthorInfoCallback(people[1])
     elseif #people > 1 then
         self:showPickerDialog(
-            T("Work %1: %2", string.find(fanfic.author, ",") and "authors" or "author", fanfic.author),
+            "Author",
             people,
             function(selected)
                 -- Strip " (Giftee)" suffix before looking up
@@ -936,145 +1014,19 @@ function FanficCardPage:onAuthorTap(fanfic)
     end
 end
 
--- Tag field tap: if one value, search directly. If multiple, show a picker.
--- The picker also offers an "expand" option to view the full text.
-function FanficCardPage:onTagFieldTap(values, category, full_text)
-    if #values == 1 then
-        self.searchByTagCallback(values[1])
-    elseif #values > 1 then
-        -- Build buttons: each value searches, plus an expand option
-        local buttons = {}
-        table.insert(buttons, {{
-            text = _("View all"),
-            callback = function()
-                UIManager:close(self._picker_dialog)
-                UIManager:show(TextViewer:new{
-                    title = category,
-                    text = full_text,
-                })
-            end,
-        },{
-            text = _("Close"),
-            callback = function()
-                UIManager:close(self._picker_dialog)
-            end,
-        }})
-        for _, value in ipairs(values) do
-            table.insert(buttons, {{
-                text = value,
-                callback = function()
-                    UIManager:close(self._picker_dialog)
-                    self.searchByTagCallback(value)
-                end,
-            }})
-        end
-        self._picker_dialog = ButtonDialog:new{
-            title = T("Search by %1", category),
-            buttons = buttons,
-        }
-        UIManager:show(self._picker_dialog)
-    end
-end
-
--- Tag field tap: if one value, search directly. If multiple, show a picker.
--- The picker also offers an "expand" option to view the full text.
-function FanficCardPage:onSeriesFieldTap(values, full_text)
-    if #values == 1 then
-        self.openSeriesCallback(values[1])
-    elseif #values > 1 then
-        -- Build buttons: each value searches, plus an expand option
-        local buttons = {}
-        for _, value in ipairs(values) do
-            table.insert(buttons, {{
-                text = value.title,
-                callback = function()
-                    UIManager:close(self._picker_dialog)
-                    self.openSeriesCallback(value)
-                end,
-            }})
-        end
-        table.insert(buttons, {{
-            text = _("View all"),
-            callback = function()
-                UIManager:close(self._picker_dialog)
-                UIManager:show(TextViewer:new{
-                    title = "Series",
-                    text = full_text,
-                })
-            end,
-        }})
-        table.insert(buttons, {{
-            text = _("Close"),
-            callback = function()
-                UIManager:close(self._picker_dialog)
-            end,
-        }})
-        self._picker_dialog = ButtonDialog:new{
-            title = "Open series",
-            buttons = buttons,
-        }
-        UIManager:show(self._picker_dialog)
-    end
-end
-
-function FanficBrowser:showDownloadDialog(fanfic)
+function FanficBrowser:DownloadFanfic(fanfic)
     if not fanfic.id then 
         return
     end
 
-    local confirmDialog
-    confirmDialog = ButtonDialog:new({
-        title = T("Would you like to download the work: %1 by %2?", fanfic.title, fanfic.author or "Anonymous"),
-        buttons = {
-            {
-                {
-                    text = "No",
-                    callback = function()
-                        UIManager:close(confirmDialog)
-                    end,
-                },
-                {
-                    text = "Yes",
-                    callback = function()
-                        UIManager:scheduleIn(1, function()
-                            AO3Manager:DownloadFanfic(fanfic.id)
-                        end)
-                        UIManager:show(InfoMessage:new({
-                            text = _("Downloading work may take some time."),
-                            timeout = 1,
-                        }))
-                        UIManager:close(confirmDialog)
-                    end,
-                },
-            },
-        },
-    })
-    UIManager:show(confirmDialog)
-end
+    UIManager:scheduleIn(1, function()
+        AO3Manager:DownloadFanfic(fanfic.id)
+    end)
+    UIManager:show(InfoMessage:new({
+        text = _("Downloading work may take some time."),
+        timeout = 1,
+    }))
 
-function FanficBrowser:showAdultWarningDialog(fanfic)
-    local warningDialog
-    warningDialog = ButtonDialog:new({
-        title = "This work could have adult content. If you continue, you have agreed that you are willing to see such content",
-        buttons = {
-            {
-                {
-                    text = "Cancel",
-                    callback = function()
-                        UIManager:close(warningDialog)
-                    end,
-                },
-                {
-                    text = "Continue",
-                    callback = function()
-                        UIManager:close(warningDialog)
-                        self:showDownloadDialog(fanfic)
-                    end,
-                },
-            },
-        },
-    })
-    UIManager:show(warningDialog)
 end
 
 --- Main entry point - called by main.lua and fanfic_menu.lua.
