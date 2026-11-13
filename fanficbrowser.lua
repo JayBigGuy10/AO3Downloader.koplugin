@@ -679,7 +679,7 @@ function FanficCardPage:buildCard(fanfic)
         end
 
         -- Warnings
-        if #fanfic.warnings > 1 then
+        if #fanfic.warnings > 0  then
             local warnings_full = table.concat(fanfic.warnings, ", ")
             local warnings_display = truncateToFitLines(warnings_full, stats_face, 3, content_width)
             table.insert(tag_section_widget, TextBoxWidget:new{
@@ -965,7 +965,6 @@ function FanficCardPage:onTagTap(fanfic)
         buttons_table = {{
             {
                 text = _("Character"),
-                id = "find",
                 callback = function()
                     UIManager:close(tagTextViewer)
                     self:showPickerDialog("Character",fanfic.characters)
@@ -978,10 +977,16 @@ function FanficCardPage:onTagTap(fanfic)
                     self:showPickerDialog("Relationship",fanfic.relationships)
                 end,
             },
+            {
+                text = _("Freeform"),
+                callback = function()
+                    UIManager:close(tagTextViewer)
+                    self:showPickerDialog("Freeform",fanfic.tags)
+                end,
+            },
         },{
             {
                 text = _("Fandom"),
-                id = "find",
                 callback = function()
                     UIManager:close(tagTextViewer)
                     self:showPickerDialog("Fandom",fanfic.fandoms)
@@ -989,7 +994,6 @@ function FanficCardPage:onTagTap(fanfic)
             },
             {
                 text = _("Series"),
-                id = "find",
                 callback = function()
                     UIManager:close(tagTextViewer)
                     self:showPickerDialog("Series",fanfic.series)
