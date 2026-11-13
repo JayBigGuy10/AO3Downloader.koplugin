@@ -2293,7 +2293,6 @@ function AO3WebParser:parseWorkElement(element)
         end
 
         local gifted_to = #giftElements > 0 and table.concat(giftedTo_table, ", ") or nil
-        local tags = #tags > 0 and table.concat(tags, ", ") or "N/A"
 
         -- Remove HTML formatting, replace <br> with new lines, and preserve paragraph formatting
         local summary = summaryElement
@@ -2571,7 +2570,7 @@ function AO3WebParser:parseWorkPage(root)
         gifted_to = gifted_to,
         chapterData = chapterData,
         summary = summary,
-        tags = #tags > 0 and table.concat(tags, ", ") or "No tags available",
+        tags = tags,
         relationships = relationships or {},
         characters = characters or {},
         warnings = warnings or {},
