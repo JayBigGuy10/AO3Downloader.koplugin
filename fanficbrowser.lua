@@ -496,15 +496,15 @@ function FanficCardPage:buildCard(fanfic)
     }
 
     local saved_parts = {}
-    if DownloadedFanfics.checkIfStored(fanfic.id) then table.insert(saved_parts, "Downloaded") end
-    if fanfic.bookmarkID then table.insert(saved_parts, fanfic.bookmarkID and "Bookmarked") end
-    if fanfic.markedForLater then table.insert(saved_parts, fanfic.markedForLater and "Marked for Later") end
-    if fanfic.subscriptionID then table.insert(saved_parts, fanfic.subscriptionID and "Subscribed") end
+    if DownloadedFanfics.checkIfStored(fanfic.id) then table.insert(saved_parts, "\u{f00c}") end
+    if fanfic.bookmarkID then table.insert(saved_parts, fanfic.bookmarkID and "\u{f02e}") end
+    if fanfic.markedForLater then table.insert(saved_parts, fanfic.markedForLater and "\u{f1da}") end
+    if fanfic.subscriptionID then table.insert(saved_parts, fanfic.subscriptionID and "\u{f0f3}") end
 
     local saved_parts_widget = nil
     if #saved_parts > 0 then
         saved_parts_widget = TextBoxWidget:new{
-            text = table.concat(saved_parts, ", "),
+            text = table.concat(saved_parts, "   "),
             face = stats_face,
             width = title_width,
         }
@@ -512,8 +512,8 @@ function FanficCardPage:buildCard(fanfic)
    
     local title_group_widget = makeTappable(VerticalGroup:new {
         title_widget,
+        saved_parts_widget,
         author_widget,
-        saved_parts_widget
     }, function()
         self:onTitleTap(fanfic)
     end)
@@ -629,10 +629,10 @@ function FanficCardPage:buildCard(fanfic)
 
         local engagement_parts = {}
 
-        if fanfic.comments then table.insert(engagement_parts, "\u{f075} " .. formatNumber(fanfic.comments)) end
-        if fanfic.kudos then table.insert(engagement_parts, "♥ " .. formatNumber(fanfic.kudos)) end
+        if fanfic.comments then table.insert(engagement_parts, "\u{f0e6} " .. formatNumber(fanfic.comments)) end
+        if fanfic.kudos then table.insert(engagement_parts, "\u{f08a} " .. formatNumber(fanfic.kudos)) end
 
-        if fanfic.bookmarks then table.insert(engagement_parts, "\u{f02e} " .. formatNumber(fanfic.bookmarks)) end
+        if fanfic.bookmarks then table.insert(engagement_parts, "\u{f097} " .. formatNumber(fanfic.bookmarks)) end
         if fanfic.hits then table.insert(engagement_parts, "\u{f080}  " .. formatNumber(fanfic.hits)) end
 
         if fanfic.updated and fanfic.updated ~= "Unknown date" then
@@ -919,13 +919,28 @@ function FanficCardPage:onTitleTap(fanfic)
             },
             {
                 {
-                    text = "Bookmark",
+                    text = fanfic.bookmarkID and "Edit Bookmark" or "Bookmark Work",
                     callback = function ()
                         UIManager:close(dialog)
                     end
                 },
                 {
-                    text = "Mark for later",
+                    text = fanfic.markedForLater and "Mark as read" or "Mark for later",
+                    callback = function ()
+                        UIManager:close(dialog)
+                    end
+                }
+            },
+            {
+                {
+                    text="View Author",
+                    callback = function ()
+                        self:onAuthorTap(fanfic)
+                        UIManager:close(dialog)
+                    end
+                },
+                {
+                    text=fanfic.subscriptionID and "Unsubscribe" or "Subscribe",
                     callback = function ()
                         UIManager:close(dialog)
                     end
@@ -939,7 +954,7 @@ function FanficCardPage:onTitleTap(fanfic)
                     end
                 },
                 {
-                    text="Subscribe",
+                    text="Delete",
                     callback = function ()
                         UIManager:close(dialog)
                     end
