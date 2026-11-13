@@ -875,7 +875,7 @@ function FanficCardPage:onTitleTap(fanfic)
                                             text = "Download",
                                             callback = function()
                                                 UIManager:close(warningDialog)
-                                                self:showDownloadDialog(fanfic)
+                                                AO3Manager:DownloadFanfic(fanfic.id)
                                             end,
                                         },
                                     },
@@ -883,7 +883,7 @@ function FanficCardPage:onTitleTap(fanfic)
                             })
                             UIManager:show(warningDialog)
                         else
-                            FanficBrowser:showDownloadDialog(fanfic)
+                            AO3Manager:DownloadFanfic(fanfic.id)
                         end
                     end,
                 }
@@ -1012,21 +1012,6 @@ function FanficCardPage:onAuthorTap(fanfic)
             end
         )
     end
-end
-
-function FanficBrowser:DownloadFanfic(fanfic)
-    if not fanfic.id then 
-        return
-    end
-
-    UIManager:scheduleIn(1, function()
-        AO3Manager:DownloadFanfic(fanfic.id)
-    end)
-    UIManager:show(InfoMessage:new({
-        text = _("Downloading work may take some time."),
-        timeout = 1,
-    }))
-
 end
 
 --- Main entry point - called by main.lua and fanfic_menu.lua.

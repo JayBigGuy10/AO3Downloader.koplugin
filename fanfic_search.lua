@@ -33,14 +33,7 @@ function FanficSearch:show()
                             return
                         end
 
-                        UIManager:scheduleIn(1, function()
-                            AO3Manager:DownloadFanfic(inputText)
-                        end)
-
-                        UIManager:show(InfoMessage:new({
-                            text = _("Downloading work may take some time…"),
-                            timeout = 1,
-                        }))
+                        AO3Manager:DownloadFanfic(inputText)
 
                         UIManager:close(fanfic_lookup_dialog)
                     end,

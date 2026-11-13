@@ -31,95 +31,107 @@ function AO3Manager:generateFileName(metadata)
 end
 
 function AO3Manager:DownloadFanfic(id)
-    if not NetworkMgr:isConnected() then
-        NetworkMgr:runWhenConnected(function () self:DownloadFanfic(id) end)
+
+    if not id then
         return
     end
 
-    -- Fetch metadata for the work
-    local request_result  = AO3DownloaderClient:getWorkMetadata(id)
-    if not request_result.success then
-        UIManager:show(InfoMessage:new{
-            text = _("Error: failed to fetch work metadata: ") .. (request_result.error or "Unknown error")
-        })
-        return
-    end
-
-    -- Extract the EPUB link from the metadata
-    local url = request_result.work_metadata.epub_link
-    if not url then
-        UIManager:show(InfoMessage:new{
-            text = _("Error: EPUB link not found for this work")
-        })
-        return
-    end
-
-    os.execute("sleep " .. math.random(1, 3))
-
-    local filename = self:generateFileName(request_result.work_metadata)
-    -- Download the EPUB file
-    local download_request_result = AO3DownloaderClient:downloadEpub(url, Config:readSetting("fanfic_folder_path") .. "/" .. filename .. ".epub")
-    if not download_request_result.success then
-        UIManager:show(InfoMessage:new{
-            text = _("Error: failed to download and write EPUB, " .. (download_request_result.error_message or ""))
-        })
-        return
-    end
-
-    -- Save metadata of the downloaded fanfic
-    local fanfic = {
-        id = id,
-        path = download_request_result.filepath,
-        title = request_result.work_metadata.title,
-        author = request_result.work_metadata.author,
-        chapters = request_result.work_metadata.chapters,
-        language = request_result.work_metadata.language,
-        chapter_data = request_result.work_metadata.chapterData,
-        summary = request_result.work_metadata.summary,
-        fandoms = request_result.work_metadata.fandoms,
-        series = request_result.work_metadata.series,
-        tags = request_result.work_metadata.tags,
-        relationships = request_result.work_metadata.relationships,
-        characters = request_result.work_metadata.characters,
-        warnings = request_result.work_metadata.warnings,
-        hits = request_result.work_metadata.hits,
-        kudos = request_result.work_metadata.kudos,
-        bookmarks = request_result.work_metadata.bookmarks,
-        comments = request_result.work_metadata.comments,
-        last_accessed = os.date("%Y-%m-%d %H:%M:%S"), --current date
-        rating = request_result.work_metadata.rating,
-        category = request_result.work_metadata.category,
-        iswip = request_result.work_metadata.iswip,
-        updated = request_result.work_metadata.updated,
-        published = request_result.work_metadata.published,
-        wordcount = request_result.work_metadata.wordcount,
-        markedForLater = request_result.work_metadata.markedForLater,
-        subscriptionID = request_result.work_metadata.subscriptionID,
-        bookmarkID = request_result.work_metadata.bookmarkID,
-        bookmarkContent = request_result.work_metadata.bookmarkContent
-    }
-
-    if fanfic.chapter_data then
-        for idx, __ in pairs(fanfic.chapter_data) do
-            fanfic.chapter_data[idx].read = false
+    UIManager:scheduleIn(1, function()
+        if not NetworkMgr:isConnected() then
+            NetworkMgr:runWhenConnected(function () self:DownloadFanfic(id) end)
+            return
         end
-    end
 
-    DownloadedFanfics.add(fanfic)
+        -- Fetch metadata for the work
+        local request_result  = AO3DownloaderClient:getWorkMetadata(id)
+        if not request_result.success then
+            UIManager:show(InfoMessage:new{
+                text = _("Error: failed to fetch work metadata: ") .. (request_result.error or "Unknown error")
+            })
+            return
+        end
 
-    -- Show confirmation dialog
-    UIManager:show(ConfirmBox:new{
-        text = T(_("File saved to:\n%1\nWould you like to read the downloaded work now?"), BD.filepath(fanfic.path)),
-        ok_text = _("Read now"),
-        ok_callback = function()
+        -- Extract the EPUB link from the metadata
+        local url = request_result.work_metadata.epub_link
+        if not url then
+            UIManager:show(InfoMessage:new{
+                text = _("Error: EPUB link not found for this work")
+            })
+            return
+        end
 
-            UIManager:broadcastEvent(Event:new("OpenAO3FanficReader", {
-                fanfic = fanfic,
-                chapter_opening_at = nil,
-            }))
+        os.execute("sleep " .. math.random(1, 3))
 
-        end,
-    })
+        local filename = self:generateFileName(request_result.work_metadata)
+        -- Download the EPUB file
+        local download_request_result = AO3DownloaderClient:downloadEpub(url, Config:readSetting("fanfic_folder_path") .. "/" .. filename .. ".epub")
+        if not download_request_result.success then
+            UIManager:show(InfoMessage:new{
+                text = _("Error: failed to download and write EPUB, " .. (download_request_result.error_message or ""))
+            })
+            return
+        end
+
+        -- Save metadata of the downloaded fanfic
+        local fanfic = {
+            id = id,
+            path = download_request_result.filepath,
+            title = request_result.work_metadata.title,
+            author = request_result.work_metadata.author,
+            chapters = request_result.work_metadata.chapters,
+            language = request_result.work_metadata.language,
+            chapter_data = request_result.work_metadata.chapterData,
+            summary = request_result.work_metadata.summary,
+            fandoms = request_result.work_metadata.fandoms,
+            series = request_result.work_metadata.series,
+            tags = request_result.work_metadata.tags,
+            relationships = request_result.work_metadata.relationships,
+            characters = request_result.work_metadata.characters,
+            warnings = request_result.work_metadata.warnings,
+            hits = request_result.work_metadata.hits,
+            kudos = request_result.work_metadata.kudos,
+            bookmarks = request_result.work_metadata.bookmarks,
+            comments = request_result.work_metadata.comments,
+            last_accessed = os.date("%Y-%m-%d %H:%M:%S"), --current date
+            rating = request_result.work_metadata.rating,
+            category = request_result.work_metadata.category,
+            iswip = request_result.work_metadata.iswip,
+            updated = request_result.work_metadata.updated,
+            published = request_result.work_metadata.published,
+            wordcount = request_result.work_metadata.wordcount,
+            markedForLater = request_result.work_metadata.markedForLater,
+            subscriptionID = request_result.work_metadata.subscriptionID,
+            bookmarkID = request_result.work_metadata.bookmarkID,
+            bookmarkContent = request_result.work_metadata.bookmarkContent
+        }
+
+        if fanfic.chapter_data then
+            for idx, __ in pairs(fanfic.chapter_data) do
+                fanfic.chapter_data[idx].read = false
+            end
+        end
+
+        DownloadedFanfics.add(fanfic)
+
+        -- Show confirmation dialog
+        UIManager:show(ConfirmBox:new{
+            text = T(_("File saved to:\n%1\nWould you like to read the downloaded work now?"), BD.filepath(fanfic.path)),
+            ok_text = _("Read now"),
+            ok_callback = function()
+
+                UIManager:broadcastEvent(Event:new("OpenAO3FanficReader", {
+                    fanfic = fanfic,
+                    chapter_opening_at = nil,
+                }))
+
+            end,
+        })
+    end)
+
+    UIManager:show(InfoMessage:new({
+        text = _("Downloading work may take some time."),
+        timeout = 1,
+    }))    
 end
 
 function AO3Manager:UpdateFanfic(fanfic, metadataOnly)
