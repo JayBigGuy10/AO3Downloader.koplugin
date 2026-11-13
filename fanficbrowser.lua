@@ -87,6 +87,53 @@ local function makeTappable(widget, callback)
     return container
 end
 
+local function showAuthorInfoCallback(author)
+    -- Parse pseud from "pseud (username)" format if present
+    local username = author
+    local pseud = author
+    if string.find(author, "%(") and string.find(author, "%)") then
+        username = string.match(author, "%((.-)%)")
+        pseud = string.match(author, "^(.-)%s*%(")
+    end
+    
+    UIManager:scheduleIn(1, function()
+        AO3Manager:showUserInfo(username, pseud)
+    end)
+    UIManager:show(InfoMessage:new{
+        text = _("Opening Author: " .. author),
+        timeout = 1,
+    })
+end
+
+local function searchByTagCallback(tag)
+    -- Search by tag from the card view. Uses "revised_at" (date updated)
+    -- as the default sort because it matches AO3's default tag page order.
+    UIManager:scheduleIn(1, function()
+        local status, searchResult = AO3Manager:fetchFanficsByTag(tag, "revised_at")
+        if status then
+            FanficBrowser:show(searchResult)
+        end
+    end)
+    UIManager:show(InfoMessage:new{
+        text = _("Searching works by tag: " .. tag),
+        timeout = 1,
+    })
+end
+
+local function openSeriesCallback(series)
+    -- Search by series
+    UIManager:scheduleIn(1, function()
+        local status, searchResult = AO3Manager:getWorksFromSeries(series.id)
+        if status then
+            FanficBrowser:show(searchResult)
+        end
+    end)
+    UIManager:show(InfoMessage:new{
+        text = _("Opening series: " .. series.title),
+        timeout = 1,
+    })
+end
+
 -- Card page widget extending KeyValuePage. Inherits the nav bar, title bar,
 -- gesture handling, keyboard support, and screen refresh logic. Only the
 -- content area rendering is customized to show one fanfic card per page.
@@ -150,18 +197,21 @@ function FanficCardPage:init()
     self:_populateItems()
 end
 
-function FanficCardPage:_populateItems()
+function FanficCardPage:_populateItems(selfCall)
     if not self._card_init_done then return end
 
-    -- Fetch the next AO3 page when arriving at the last loaded fanfic, but not if we have already loaded all items from the search
-    if self.show_page == self.pages and self.fetchNextPage and self.show_page ~= (self.totalFanfics and self.totalFanfics + (self.searchResult.cover_page and 1 or 0) or nil) then
-        local new_fics = self.fetchNextPage()
-        if new_fics and #new_fics > 0 then
-            for _, fic in ipairs(new_fics) do
-                table.insert(self.fanfics, fic)
+    -- When at last loaded fic fetch next page if function is available and not on the last page and sanity check not in a recursive call 
+    if self.show_page == self.pages and self.searchResult.fetchNextPage and self.show_page ~= (self.totalFanfics and self.totalFanfics + (self.searchResult.cover_page and 1 or 0) or nil) and not selfCall then
+        UIManager:scheduleIn(1, function()
+            local new_fics = self.searchResult.fetchNextPage()
+            if new_fics and #new_fics > 0 then
+                for _, fic in ipairs(new_fics) do
+                    table.insert(self.fanfics, fic)
+                end
+                self.pages = #self.fanfics + (self.searchResult.cover_page and 1 or 0)
             end
-            self.pages = #self.fanfics + (self.searchResult.cover_page and 1 or 0)
-        end
+            self:_populateItems(true)
+        end)
     end
 
     self.layout = {}
@@ -222,7 +272,6 @@ function FanficCardPage:update(filter)
         self.title = (searchResult.title or "AO3 Works") .. (searchResult.count and (" | " .. searchResult.count .." " .. searchResult.count_suffix) or "")
         self.fanfics = searchResult.works
         self.totalFanfics = searchResult.count
-        self.fetchNextPage = searchResult.fetchNextPage
         self.show_page = 1
         self:init()
         self:_populateItems()
@@ -239,30 +288,22 @@ function FanficCardPage:showPickerDialog(category, values, callback)
         callback = function(value)
             UIManager:close(self._picker_dialog)
             if category == "Series" then
-                self.openSeriesCallback(value)
+                openSeriesCallback(value)
                 return
             end
-            self.searchByTagCallback(value)
+            searchByTagCallback(value)
         end
     end
 
-    local buttons = {}
-
-    table.insert(buttons, {{
-        text = _("View Text"),
-        callback = function()
-            UIManager:close(self._picker_dialog)
-            UIManager:show(TextViewer:new{
-                title = category,
-                text = table.concat(values, ", "),
-            })
-        end,
-    },{
-        text = _("Close"),
-        callback = function()
-            UIManager:close(self._picker_dialog)
-        end,
-    }})
+    -- close is at the top so it is easy to use when there is so many values it goes off the screen
+    local buttons = {
+        { {
+            text = _("Close"),
+            callback = function()
+                UIManager:close(self._picker_dialog)
+            end,
+        } }
+    }
 
     for _, value in ipairs(values) do
         table.insert(buttons, {{
@@ -477,6 +518,7 @@ function FanficCardPage:buildCard(fanfic)
         self:onTitleTap(fanfic)
     end)
 
+    -- warning serious spaghetti related to determining icons from inconsistent metadata
     local rating_paths = {
         ["Not Rated"] = "plugins/AO3Downloader.koplugin/icons/rating-notrated.png",
         ["General Audiences"] = "plugins/AO3Downloader.koplugin/icons/rating-general-audience.png",
@@ -527,7 +569,7 @@ function FanficCardPage:buildCard(fanfic)
             },
             VerticalSpan:new { width = Size.padding.small },
             ImageWidget:new {
-                file = warning_paths[#fanfic.warnings == 1 and fanfic.warnings[1] or #fanfic.warnings == 0 and "No Archive Warnings Apply" or "Yes"],
+                file = (#fanfic.warnings > 0) and (warning_paths[fanfic.warnings[1]] or warning_paths["Yes"]) or (warning_paths["No Archive Warnings Apply"]),
                 width = Screen:scaleBySize(36),
                 height = Screen:scaleBySize(36),
                 image_disposable = false
@@ -584,19 +626,6 @@ function FanficCardPage:buildCard(fanfic)
             face = stats_face,
             width = content_width,
         })
-
-        -- == STATS ==
-        -- local stats_parts = {}
-        -- if fanfic.rating then
-        --     local short_ratings = {
-        --         ["Not Rated"] = "None",
-        --         ["General Audiences"] = "General",
-        --         ["Teen And Up Audiences"] = "Teen",
-        --         ["Mature"] = "Mature",
-        --         ["Explicit"] = "Explicit",
-        --     }
-        --     table.insert(stats_parts, "Rating: " .. (short_ratings[fanfic.rating] or fanfic.rating))
-        -- end
 
         local engagement_parts = {}
 
@@ -887,13 +916,34 @@ function FanficCardPage:onTitleTap(fanfic)
                         end
                     end,
                 }
-            },{
-                {text = "Bookmark"},
-                {text = "Mark for later"}
             },
             {
-                {text="Cancel"},
-                {text="Subscribe"}
+                {
+                    text = "Bookmark",
+                    callback = function ()
+                        UIManager:close(dialog)
+                    end
+                },
+                {
+                    text = "Mark for later",
+                    callback = function ()
+                        UIManager:close(dialog)
+                    end
+                }
+            },
+            {
+                {
+                    text="Cancel",
+                    callback = function ()
+                        UIManager:close(dialog)
+                    end
+                },
+                {
+                    text="Subscribe",
+                    callback = function ()
+                        UIManager:close(dialog)
+                    end
+                }
             }
         },
     }
@@ -901,91 +951,62 @@ function FanficCardPage:onTitleTap(fanfic)
 end
 
 function FanficCardPage:onTagTap(fanfic)
-    local buttons = {
-        {
+
+    local everythingText = ((fanfic.category and fanfic.category ~= "") and ("(" .. fanfic.category .. ")") or "")
+        .. " " .. table.concat(fanfic.warnings, ", ") 
+        .. ", " .. table.concat(fanfic.relationships, ", ") 
+        .. ", " .. table.concat(fanfic.characters, ", ")
+        .. ", " .. table.concat(fanfic.tags, ", ")
+
+    local tagTextViewer 
+    tagTextViewer = TextViewer:new{
+        title = "All Tags",
+        text = everythingText,
+        buttons_table = {{
             {
-                text = fanfic.fandoms[1],
+                text = _("Character"),
+                id = "find",
                 callback = function()
-                    UIManager:close(self._picker_dialog)
+                    UIManager:close(tagTextViewer)
+                    self:showPickerDialog("Character",fanfic.characters)
                 end,
             },
             {
-                text = _("All Fandoms"),
+                text = _("Relationship"),
                 callback = function()
-                    UIManager:close(self._picker_dialog)
-                    self:showPickerDialog("Fandom",fanfic.fandoms)
-                end,
-            }
-        },
-        {
-            {
-                text = fanfic.relationships[1],
-                callback = function()
-                    UIManager:close(self._picker_dialog)
-                end,
-            },
-            {
-                text = _("All Relationships"),
-                callback = function()
-                    UIManager:close(self._picker_dialog)
+                    UIManager:close(tagTextViewer)
                     self:showPickerDialog("Relationship",fanfic.relationships)
                 end,
-            }
-        },
-        {
+            },
+        },{
             {
-                text = fanfic.characters[1],
+                text = _("Fandom"),
+                id = "find",
                 callback = function()
-                    UIManager:close(self._picker_dialog)
+                    UIManager:close(tagTextViewer)
+                    self:showPickerDialog("Fandom",fanfic.fandoms)
                 end,
             },
             {
-                text = _("All Characters"),
+                text = _("Series"),
+                id = "find",
                 callback = function()
-                    UIManager:close(self._picker_dialog)
-                    self:showPickerDialog("Charecter",fanfic.characters)
-                end,
-            }
-        },
-        {
-            -- {
-            --     text = fanfic.tags[1],
-            --     callback = function()
-            --         UIManager:close(self._picker_dialog)
-            --     end,
-            -- },
-            {
-                text = _("Freeform Tags"),
-                callback = function()
-                    UIManager:close(self._picker_dialog)
-                end,
-            }
-        },
-        #fanfic.series > 0 and {
-         {
-                text = fanfic.series[1],
-                callback = function()
-                    UIManager:close(self._picker_dialog)
-                end,
-            },
-            {
-                text = _("All Series"),
-                callback = function()
-                    UIManager:close(self._picker_dialog)
+                    UIManager:close(tagTextViewer)
                     self:showPickerDialog("Series",fanfic.series)
                 end,
-            }
-        } or nil,
+            },
+            {
+                text = _("Close"),
+                callback = function()
+                    UIManager:close(tagTextViewer)
+                end,
+            },
+        }}
     }
-    self._picker_dialog = ButtonDialog:new {
-        title = "Tag options",
-        buttons = buttons,
-    }
-    UIManager:show(self._picker_dialog)
+    UIManager:show(tagTextViewer)
 end
 
--- Author tap: show author profile. If multiple authors or a giftee exists,
--- show a picker so the user can choose which profile to view.
+-- Show author profile, handle multiple authors / giftee with the picker dialog
 function FanficCardPage:onAuthorTap(fanfic)
     local people = {}
     if fanfic.author then
@@ -1000,7 +1021,7 @@ function FanficCardPage:onAuthorTap(fanfic)
     end
 
     if #people == 1 then
-        self.showAuthorInfoCallback(people[1])
+        showAuthorInfoCallback(people[1])
     elseif #people > 1 then
         self:showPickerDialog(
             "Author",
@@ -1008,15 +1029,13 @@ function FanficCardPage:onAuthorTap(fanfic)
             function(selected)
                 -- Strip " (Giftee)" suffix before looking up
                 local name = selected:gsub(" %(Giftee%)$", "")
-                self.showAuthorInfoCallback(name)
+                showAuthorInfoCallback(name)
             end
         )
     end
 end
 
---- Main entry point - called by main.lua and fanfic_menu.lua.
--- searchByTagCallback is optional; when provided, fandom/relationship/character
--- fields become tappable to trigger a tag search.
+--- Main entry point - called by main.lua and fanfic_menu.lua
 function FanficBrowser:show(searchResult)
     
     local title = (searchResult.title or "AO3 Works") .. (searchResult.count and (" | " .. searchResult.count .. " " .. (searchResult.count_suffix or "")) or "")
@@ -1025,52 +1044,7 @@ function FanficBrowser:show(searchResult)
         title = title,
         fanfics = searchResult.works,
         totalFanfics = searchResult.count,
-        fetchNextPage = searchResult.fetchNextPage,
-        searchResult = searchResult,
-        showAuthorInfoCallback = function(author)
-            -- Parse pseud from "pseud (username)" format if present
-            local username = author
-            local pseud = author
-            if string.find(author, "%(") and string.find(author, "%)") then
-                username = string.match(author, "%((.-)%)")
-                pseud = string.match(author, "^(.-)%s*%(")
-            end
-            
-            UIManager:scheduleIn(1, function()
-                AO3Manager:showUserInfo(username, pseud)
-            end)
-            UIManager:show(InfoMessage:new{
-                text = _("Opening Author: " .. author),
-                timeout = 1,
-            })
-        end,
-        searchByTagCallback = function(tag)
-            -- Search by tag from the card view. Uses "revised_at" (date updated)
-            -- as the default sort because it matches AO3's default tag page order.
-            UIManager:scheduleIn(1, function()
-                local status, searchResult = AO3Manager:fetchFanficsByTag(tag, "revised_at")
-                if status then
-                    self:show(searchResult)
-                end
-            end)
-            UIManager:show(InfoMessage:new{
-                text = _("Searching works by tag: " .. tag),
-                timeout = 1,
-            })
-        end,
-        openSeriesCallback = function(series)
-            -- Search by series
-            UIManager:scheduleIn(1, function()
-                local status, searchResult = AO3Manager:getWorksFromSeries(series.id)
-                if status then
-                    FanficBrowser:show(searchResult)
-                end
-            end)
-            UIManager:show(InfoMessage:new{
-                text = _("Opening series: " .. series.title),
-                timeout = 1,
-            })
-        end
+        searchResult = searchResult
     }
 
     -- Assigned after construction so the closure captures the populated
