@@ -496,15 +496,15 @@ function FanficCardPage:buildCard(fanfic)
     }
 
     local saved_parts = {}
-    if DownloadedFanfics.checkIfStored(fanfic.id) then table.insert(saved_parts, "Downloaded: ✓") end
-    if fanfic.bookmarkID then table.insert(saved_parts, fanfic.bookmarkID and "Bookmarked: " .. ("Yes" or "No")) end
-    if fanfic.markedForLater then table.insert(saved_parts, fanfic.markedForLater and "Marked for Later: " .. ("Yes" or "No")) end
-    if fanfic.subscriptionID then table.insert(saved_parts, fanfic.subscriptionID and "Subscribed: " .. ("Yes" or "No")) end
+    if DownloadedFanfics.checkIfStored(fanfic.id) then table.insert(saved_parts, "Downloaded") end
+    if fanfic.bookmarkID then table.insert(saved_parts, fanfic.bookmarkID and "Bookmarked") end
+    if fanfic.markedForLater then table.insert(saved_parts, fanfic.markedForLater and "Marked for Later") end
+    if fanfic.subscriptionID then table.insert(saved_parts, fanfic.subscriptionID and "Subscribed") end
 
     local saved_parts_widget = nil
     if #saved_parts > 0 then
         saved_parts_widget = TextBoxWidget:new{
-            text = table.concat(saved_parts, "   "),
+            text = table.concat(saved_parts, ", "),
             face = stats_face,
             width = title_width,
         }
