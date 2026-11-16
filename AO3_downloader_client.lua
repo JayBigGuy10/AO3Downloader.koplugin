@@ -81,6 +81,7 @@ function encodeHelper:parseFromHTML(str)
                         :gsub("<br%s*/?>", "\n") -- Replace <br> tags with new lines
                         :gsub("</p>", "\n") -- Add new lines for paragraph breaks
                         :gsub("<[^>]+>", "") -- Remove other HTML tags
+                        :gsub("&nbsp;", " ") -- Replace nbsp with spaces
                         :gsub("^%s*(.-)%s*$", "%1") -- Trim whitespace
                 )
 end
