@@ -501,22 +501,19 @@ function FanficCardPage:buildCard(fanfic)
     if fanfic.markedForLater then table.insert(saved_parts, fanfic.markedForLater and "\u{f1da}") end
     if fanfic.subscriptionID then table.insert(saved_parts, fanfic.subscriptionID and "\u{f0f3}") end
 
-    local saved_parts_widget = nil
+    local title_group_widgets = {title_widget}
+
     if #saved_parts > 0 then
-        saved_parts_widget = TextBoxWidget:new{
+        table.insert(title_group_widgets,TextBoxWidget:new{
             text = table.concat(saved_parts, "   "),
             face = stats_face,
             width = title_width,
-        }
+        })
     end
+
+    table.insert(title_group_widgets, author_widget)
    
-    local title_group_widget = makeTappable(VerticalGroup:new {
-        title_widget,
-        saved_parts_widget,
-        author_widget,
-    }, function()
-        self:onTitleTap(fanfic)
-    end)
+    local title_group_widget = makeTappable(VerticalGroup:new(title_group_widgets), function() self:onTitleTap(fanfic) end)
 
     -- warning serious spaghetti related to determining icons from inconsistent metadata
     local rating_paths = {
