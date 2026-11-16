@@ -596,6 +596,31 @@ function AO3Manager:getBookmarksFromCollection(collection_id)
     return status, searchResult
 end
 
+function AO3Manager:toggleWorkMarkedForLater(fanfic)
+    if not NetworkMgr:isConnected() then
+        NetworkMgr:runWhenConnected()
+        return
+    end
+
+    local request_result = AO3DownloaderClient:markForLaterWork(fanfic.id, fanfic.markedForLater)
+
+    fanfic.markedForLater = not fanfic.markedForLater
+    if DownloadedFanfics.checkIfStored(fanfic.id) then
+        DownloadedFanfics.update(fanfic, false)
+    end
+
+    if request_result.success then
+        UIManager:show(InfoMessage:new({
+            text = fanfic.markedForLater and "Fanfic Marked for Later" or
+                "Fanfic Marked as Read",
+        }))
+    else
+        UIManager:show(InfoMessage:new({
+            text = "Error: " .. request_result.error,
+        }))
+    end
+end
+
 function AO3Manager:searchForTags(query, type)
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()

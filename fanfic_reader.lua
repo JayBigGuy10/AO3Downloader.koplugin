@@ -50,32 +50,6 @@ function FanficReader:giveKudosToWork(fanfic_id)
     }))
 end
 
-function FanficReader:toggleWorkMarkedForLater(fanfic)
-
-    if not NetworkMgr:isConnected() then
-        NetworkMgr:runWhenConnected()
-        return
-    end
-
-    local request_result = AO3DownloaderClient:markForLaterWork(self.current_fanfic.id,
-        self.current_fanfic.markedForLater)
-
-    self.current_fanfic.markedForLater = not self.current_fanfic.markedForLater
-    DownloadedFanfics.update(self.current_fanfic, false)
-
-    if request_result.success then
-        UIManager:show(InfoMessage:new({
-            text = self.current_fanfic.markedForLater and "Fanfic Marked for Later" or
-                "Fanfic Marked as Read",
-        }))
-    else
-        UIManager:show(InfoMessage:new({
-            text = "Error: " .. request_result.error,
-        }))
-    end
-
-end
-
 function FanficReader:showBookmarkDialog()
 
     if not NetworkMgr:isConnected() then
@@ -257,7 +231,7 @@ function FanficReader:onEndOfFic()
                     return self.current_fanfic.markedForLater and "Mark as read" or "Mark for later"
                 end,
                 callback = function()
-                    self:toggleWorkMarkedForLater(self.current_fanfic)              
+                    AO3Manager:toggleWorkMarkedForLater(self.current_fanfic)              
                 end,
             },
         },
@@ -489,7 +463,7 @@ function FanficReader:addToMainMenu(menu_items)
                     {
                         text = self.current_fanfic.markedForLater and "Mark as read" or "Mark for later",
                         callback = function()
-                            self:toggleWorkMarkedForLater(self.current_fanfic)
+                            AO3Manager:toggleWorkMarkedForLater(self.current_fanfic)
                             UIManager:close(dialog)
                         end,
                     }
