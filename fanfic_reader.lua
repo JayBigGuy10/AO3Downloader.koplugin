@@ -9,7 +9,6 @@ local AO3DownloaderClient = require("AO3_downloader_client")
 local InfoMessage = require("ui/widget/infomessage")
 local InputDialog = require("ui/widget/inputdialog")
 local ButtonDialog = require("ui/widget/buttondialog")
-local MultiInputDialog = require("ui/widget/multiinputdialog")
 local FanficBookmarkDialog = require("fanfic_bookmark_dialog")
 local logger = require("logger")
 local MenuStack = require("menu_stack")
@@ -50,139 +49,6 @@ function FanficReader:giveKudosToWork(fanfic_id)
     }))
 end
 
-function FanficReader:showBookmarkDialog()
-
-    if not NetworkMgr:isConnected() then
-        NetworkMgr:runWhenConnected()
-            return false
-    end
-
-    local request_result = AO3DownloaderClient:getUsersWorkBookmark(self.current_fanfic.id)
-    if  request_result.success then
-        self.current_fanfic.bookmarkContent = request_result.bookmark_data
-
-        if request_result.bookmark_id then
-            self.current_fanfic.bookmarkID = request_result.bookmark_id
-        else
-            self.current_fanfic.bookmarkID = false
-        end
-        DownloadedFanfics.update(self.current_fanfic, false)
-
-    else
-        local info_message = InfoMessage:new({
-            text = "Error: " .. request_result.error,
-        })
-        info_message[1].ignore = "height"
-        UIManager:show(info_message)
-    end
-
-
-    local fanficBookmark_dialog =  FanficBookmarkDialog:new({
-        current_fanfic = self.current_fanfic,
-        bookmark_notes_original = self.current_fanfic.bookmarkContent and self.current_fanfic.bookmarkContent.notes or nil,
-        bookmark_tags_original = self.current_fanfic.bookmarkContent and self.current_fanfic.bookmarkContent.tags or nil,
-        bookmark_collections_original = self.current_fanfic.bookmarkContent and self.current_fanfic.bookmarkContent.collections or nil,
-        bookmark_private = self.current_fanfic.bookmarkContent and self.current_fanfic.bookmarkContent.private or false,
-        bookmark_rec = self.current_fanfic.bookmarkContent and self.current_fanfic.bookmarkContent.rec or false,
-        save_dialog_callback = function(bookmark_data)
-            local NetworkMgr = require("ui/network/manager")
-            if not NetworkMgr:isConnected() then
-                NetworkMgr:runWhenConnected()
-                return false
-            end
-
-            local request_result = AO3DownloaderClient:updateBookmark(
-                self.current_fanfic.id,
-                self.current_fanfic.bookmarkID,
-                bookmark_data.notes,
-                bookmark_data.tags,
-                bookmark_data.collections,
-                bookmark_data.private,
-                bookmark_data.rec
-            )
-
-            if request_result.success then
-                local originalBMID = self.current_fanfic.bookmarkID
-
-                self.current_fanfic.bookmarkContent = bookmark_data
-
-                if request_result.bookmark_id then
-                    self.current_fanfic.bookmarkID = request_result.bookmark_id
-                else
-                    self.current_fanfic.bookmarkID = false
-                end
-                DownloadedFanfics.update(self.current_fanfic, false)
-
-                UIManager:show(InfoMessage:new({
-                    text = originalBMID and "Updated Bookmark" or "Created Bookmark",
-                }))
-                return true
-            else
-                logger.dbg("Error saving bookmark: " .. request_result.error)
-                UIManager:show(InfoMessage:new({
-                    text = "Error: " .. request_result.error,
-                }))
-                return false
-            end
-
-        end,
-        delete_dialog_callback = function()
-            local NetworkMgr = require("ui/network/manager")
-            if not NetworkMgr:isConnected() then
-                NetworkMgr:runWhenConnected()
-                return false
-            end
-
-            local request_result = AO3DownloaderClient:deleteBookmark(self.current_fanfic.bookmarkID)
-
-            if request_result.success then
-                self.current_fanfic.bookmarkID = false
-                self.current_fanfic.bookmarkContent = {}
-                DownloadedFanfics.update(self.current_fanfic, false)
-
-                UIManager:show(InfoMessage:new({
-                    text = "Deleted Bookmark",
-                }))
-                return true
-            else
-                logger.dbg("Error deleting bookmark: " .. request_result.error)
-                UIManager:show(InfoMessage:new({
-                    text = "Error: " .. request_result.error,
-                }))
-                return false
-            end
-
-        end,
-
-        search_collections_callback = function(collection_name)
-            local NetworkMgr = require("ui/network/manager")
-            if not NetworkMgr:isConnected() then
-                NetworkMgr:runWhenConnected()
-                return
-            end
-
-
-            local request_result = AO3DownloaderClient:searchForCollections(collection_name)
-
-            if request_result.success then
-                return request_result.collections
-            else
-                logger.dbg("Error searching collections: " .. request_result.error)
-                UIManager:show(InfoMessage:new({
-                    text = "Error: " .. request_result.error,
-                }))
-                return nil
-            end
-        end
-
-    })
-    fanficBookmark_dialog.close_widget_callback = function()
-        UIManager:close(fanficBookmark_dialog)
-    end
-    UIManager:show(fanficBookmark_dialog)
-    fanficBookmark_dialog:onShowKeyboard()
-end
-
 function FanficReader:onEndOfFic()
     Device:performHapticFeedback("CONTEXT_CLICK")
 
@@ -194,7 +60,7 @@ function FanficReader:onEndOfFic()
                     return self.current_fanfic.bookmarkID and "Edit Bookmark" or "Bookmark Work"
                 end,
                 callback = function()
-                    self:showBookmarkDialog()
+                    FanficBookmarkDialog:show(self.current_fanfic)
                 end,
             },
             {
@@ -452,7 +318,7 @@ function FanficReader:addToMainMenu(menu_items)
                         {
                             text = self.current_fanfic.bookmarkID and "Edit Bookmark" or "Bookmark Work",
                             callback = function ()
-                                self:showBookmarkDialog()
+                                FanficBookmarkDialog:show(self.current_fanfic)
                                 UIManager:close(dialog)
                             end
                         }
