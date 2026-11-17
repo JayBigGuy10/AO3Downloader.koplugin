@@ -9,6 +9,7 @@ local util = require("util")
 local FFIUtil = require("ffi/util")
 local AO3Manager = require("AO3_manager")
 local CustomFilterEditor = require("custom_filter_editor")
+local FanficBookmarkDialog = require("fanfic_bookmark_dialog")
 local T = FFIUtil.template
 
 local KeyValuePage = require("ui/widget/keyvaluepage")
@@ -226,7 +227,7 @@ function FanficCardPage:_populateItems(selfCall)
     end
 
     -- Nav bar update - identical to KeyValuePage._populateItems
-    if self.pages >= 1 then
+    if self.pages > 1 then
         if self.searchResult.cover_page and self.show_page == 1 then
             self.page_info_text:setText("Description")
         else
@@ -919,12 +920,16 @@ function FanficCardPage:onTitleTap(fanfic)
                     text = fanfic.bookmarkID and "Edit Bookmark" or "Bookmark Work",
                     callback = function ()
                         UIManager:close(dialog)
+                        FanficBookmarkDialog:show(fanfic)
+                        self:_populateItems(true)
                     end
                 },
                 {
                     text = fanfic.markedForLater and "Mark as read" or "Mark for later",
                     callback = function ()
                         UIManager:close(dialog)
+                        AO3Manager:toggleWorkMarkedForLater(fanfic)
+                        self:_populateItems(true)
                     end
                 }
             },
@@ -940,6 +945,8 @@ function FanficCardPage:onTitleTap(fanfic)
                     text=fanfic.subscriptionID and "Unsubscribe" or "Subscribe",
                     callback = function ()
                         UIManager:close(dialog)
+                        AO3Manager:toggleWorkSubscription(fanfic)
+                        self:_populateItems(true)
                     end
                 }
             },
