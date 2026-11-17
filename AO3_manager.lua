@@ -621,6 +621,36 @@ function AO3Manager:toggleWorkMarkedForLater(fanfic)
     end
 end
 
+function AO3Manager:toggleWorkSubscription(fanfic)
+
+    if not NetworkMgr:isConnected() then
+        NetworkMgr:runWhenConnected()
+        return
+    end
+
+    local request_result = AO3DownloaderClient:setWorkSubscription(fanfic.id,
+        fanfic.subscriptionID)
+    if request_result.success then
+        if request_result.subscription_id then
+            fanfic.subscriptionID = request_result.subscription_id
+        else
+            fanfic.subscriptionID = false
+        end
+        if DownloadedFanfics.checkIfStored(fanfic.id) then
+            DownloadedFanfics.update(fanfic, false)
+        end
+        UIManager:show(InfoMessage:new({
+            text = fanfic.subscriptionID and "Subscribed to Fanfic" or
+            "Unsubscribed from Fanfic",
+        }))
+    else
+        UIManager:show(InfoMessage:new({
+            text = "Error: " .. request_result.error .. (fanfic.subscriptionID or ""),
+        }))
+    end
+
+end
+
 function AO3Manager:searchForTags(query, type)
     if not NetworkMgr:isConnected() then
         NetworkMgr:runWhenConnected()

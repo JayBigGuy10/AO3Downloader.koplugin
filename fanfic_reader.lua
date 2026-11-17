@@ -183,35 +183,6 @@ function FanficReader:showBookmarkDialog()
     fanficBookmark_dialog:onShowKeyboard()
 end
 
-function FanficReader:toggleWorkSubscription()
-
-    if not NetworkMgr:isConnected() then
-        NetworkMgr:runWhenConnected()
-        return
-    end
-
-    local request_result = AO3DownloaderClient:setWorkSubscription(self.current_fanfic.id,
-        self.current_fanfic.subscriptionID)
-    if request_result.success then
-        if request_result.subscription_id then
-            self.current_fanfic.subscriptionID = request_result.subscription_id
-        else
-            self.current_fanfic.subscriptionID = false
-        end
-        DownloadedFanfics.update(self.current_fanfic, false)
-
-        UIManager:show(InfoMessage:new({
-            text = self.current_fanfic.subscriptionID and "Subscribed to Fanfic" or
-            "Unsubscribed from Fanfic",
-        }))
-    else
-        UIManager:show(InfoMessage:new({
-            text = "Error: " .. request_result.error .. (self.current_fanfic.subscriptionID or ""),
-        }))
-    end
-
-end
-
 function FanficReader:onEndOfFic()
     Device:performHapticFeedback("CONTEXT_CLICK")
 
@@ -247,7 +218,7 @@ function FanficReader:onEndOfFic()
                     return self.current_fanfic.subscriptionID and "Unsubscribe" or "Subscribe"
                 end,
                 callback = function()
-                    FanficReader:toggleWorkSubscription()
+                    AO3Manager:toggleWorkSubscription(self.current_fanfic)
                 end,
             },
         },
@@ -472,7 +443,7 @@ function FanficReader:addToMainMenu(menu_items)
                         {
                             text = self.current_fanfic.subscriptionID and "Unsubscribe from work" or "Subscribe to work",
                             callback = function()
-                                FanficReader:toggleWorkSubscription()
+                                AO3Manager:toggleWorkSubscription(self.current_fanfic)
                                 UIManager:close(dialog)
                             end,
                         }
