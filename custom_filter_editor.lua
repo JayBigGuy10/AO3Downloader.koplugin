@@ -453,7 +453,7 @@ function CustomFilterEditor:singleTagSearchSelection(title, tagSearchResults, se
     self.menuWidget:GoDownInMenu(title, menu_items)
 end
 
-function CustomFilterEditor:show(filter, searchCallback)
+function CustomFilterEditor:show(filter, searchCallback, refreshMenuCallback, menuWidget)
 
     self.filter = deepcopy(filter)
 
@@ -563,12 +563,21 @@ function CustomFilterEditor:show(filter, searchCallback)
         })
     end
 
-    self.menuWidget = FanficMenuWidget:new({
-        title = "Edit filter" .. (self.filter.title and ": " .. self.filter.title or ""),
-        item_table = filterMenuOptions,
-    })
+    local title = "Edit filter" .. (self.filter.title and ": " .. self.filter.title or "")
 
-    UIManager:show(self.menuWidget)
+    self.refreshMenuCallback = refreshMenuCallback
+
+    if menuWidget then
+        self.menuWidget = menuWidget
+        self.menuWidget:GoDownInMenu(title, filterMenuOptions)
+    else
+        self.menuWidget = FanficMenuWidget:new({
+            title = title,
+            item_table = filterMenuOptions,
+        })
+        UIManager:show(self.menuWidget)
+    end
+
 end
 
 
@@ -618,6 +627,10 @@ function CustomFilterEditor:OverwriteFilter(filter)
         text = 'Filter "' .. filter.title .. '" has been overwritten',
     }))
 
+    if self.refreshMenuCallback then
+        self.menuWidget:updateMenuBack(1, nil, self.refreshMenuCallback(), nil)
+    end
+    
 end
 
 function CustomFilterEditor:SaveFilters()
@@ -661,6 +674,11 @@ function CustomFilterEditor:SaveFilters()
                         UIManager:show(InfoMessage:new({
                             text = 'Filter "' .. value .. '" has been saved',
                         }))
+
+                        if self.refreshMenuCallback then
+                            self.menuWidget:updateMenuBack(1, nil, self.refreshMenuCallback(), nil)
+                        end
+
                         self:goBack()
                         -- self:UpdateFilterCrafter(newFilter)
                         UIManager:close(inputDialog)
